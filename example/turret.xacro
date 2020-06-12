@@ -1,0 +1,133 @@
+<?xml version="1.0"?>
+<robot name="turret" xmlns:xacro="http://www.ros.org/wiki/xacro">
+    
+<xacro:arg name="x" default="0"/>
+<xacro:arg name="y" default="0"/>
+<xacro:arg name="prefix" default=""/>
+
+<material name="matbase">
+        <color rgba="1 1 1 1"/>
+      </material>
+ <material name="mat3">
+        <color rgba="1 1 1 1"/>
+      </material>
+ <material name="mat2">
+        <color rgba=".8 0 0 1"/>
+      </material>
+ <material name="mat1">
+        <color rgba=".0 0 0 1"/>
+      </material>
+ <material name="mat4">
+        <color rgba=".0 1 0 1"/>
+      </material>
+      
+<link name="world"/>
+    
+<joint name="base_link" type="fixed">
+    <parent link="world" />
+    <child link="$(arg prefix)base_link" />
+    <origin xyz="$(arg x) $(arg y) 0.0" />
+</joint>
+      
+<!-- Links -->
+  <link name="$(arg prefix)base_link">
+    <visual>
+        <origin xyz="0 0 0.25" rpy="0 0 0" />
+      <geometry>
+        <cylinder length="0.5" radius="0.025"/>
+      </geometry>
+ <material name="matbase"/>
+    </visual>
+  </link>
+
+<link name="$(arg prefix)link1">
+<visual>
+<geometry>
+        <sphere radius="0.02"/>
+</geometry>
+ <material name="mat1"/>
+    </visual>
+</link>
+
+<link name="$(arg prefix)link2">
+<visual>
+<origin xyz="0 0 0.0" rpy="0 1.57079632679 0" />
+<geometry>
+        <cylinder length="0.01" radius="0.021"/>
+</geometry>
+ <material name="mat2"/>
+    </visual>
+</link>
+
+<link name="$(arg prefix)link2_2">
+<visual>
+        <origin xyz="0 .03 0.0" rpy="1.57079632679 0 0" />
+<geometry>
+        <cylinder length="0.06" radius="0.004"/>
+</geometry>
+ <material name="mat2"/>
+    </visual>
+</link>
+
+<link name="$(arg prefix)link3">
+<visual>
+        <origin xyz="0 0 .06" rpy="0 0 0" />
+<geometry>
+        <cylinder length="0.08" radius="0.0035"/>
+</geometry>
+ <material name="mat3"/>
+    </visual>
+</link>
+
+<link name="$(arg prefix)tool0">
+<visual>
+        <origin xyz="0 0 .001" rpy="0 0 0" />
+<geometry>
+<sphere  radius=".004"/>
+</geometry>
+        <material name="mat4"/>
+    </visual>
+</link>
+
+<!-- Joints -->
+
+	<joint name="joint1" type="revolute">
+        <limit lower="-3.1416" upper="3.1416" effort="10" velocity="3" />
+	<dynamics damping="0.0" friction="0.0"/>
+    	<parent link="$(arg prefix)base_link" />
+    	<child link="$(arg prefix)link1" />
+    	<origin xyz="0.0 0 0.5" rpy="0 0 0" />
+    	<axis xyz="0 0 1" />
+	</joint>
+
+	<joint name="joint2" type="revolute">
+        <limit lower="-1.2" upper="1.2" effort="10" velocity="3" />
+	<dynamics damping="0.0" friction="0.0"/>
+    	<parent link="$(arg prefix)link1" />
+    	<child link="$(arg prefix)link2" />
+    	<origin xyz="0. 0 0.0" rpy="1.57079632679 0 0" />
+    	<axis xyz="0 0 1" />
+	</joint>
+
+	<joint name="link2_2" type="fixed">
+    	<parent link="$(arg prefix)link2" />
+    	<child link="$(arg prefix)link2_2" />
+    	<origin xyz="0.0 0 0.0" rpy="0 0 0" />
+	</joint>
+
+	<joint name="joint3" type="prismatic">
+        <limit lower="0" upper=".04" effort="10" velocity="3" />
+    <dynamics damping="0.0" friction="0.0"/>
+    	<parent link="$(arg prefix)link2" />
+    	<child link="$(arg prefix)link3" />
+    	<origin xyz="0. 0 0." rpy="-1.57079632679 0 0" />
+    	<axis xyz="0 0 1" />
+	</joint>
+
+	<joint name="link4_2" type="fixed">
+    	<parent link="$(arg prefix)link3" />
+    	<child link="$(arg prefix)tool0" />
+    	<origin xyz="0.0 0 0.1" rpy="0 0 0" />
+	</joint>
+
+</robot>
