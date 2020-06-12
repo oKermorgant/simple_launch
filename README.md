@@ -43,7 +43,7 @@ The helper class allows declaring launch arguments and getting them in return:
 
 ### Retrieve a launch argument
 
-`sl.arg(name)`: return the argument `name`
+`sl.arg(name)`: returns the argument `name`
 
 ### Retrieve several arguments as a dictionary
 
@@ -109,7 +109,7 @@ If `file_dir` is `None` then the `find` function will actually look for the file
 
 ### Fallback to low-level syntax
 
-
+If any unavailable functionality is needed, the `sl.entity(entity)` function adds any passed `Entity` at the current namespace / conditional / composition level.
         
 ## Examples
 
