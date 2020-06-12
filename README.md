@@ -17,22 +17,23 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 ### Node registration
 
-`sl.node(package, executable, kwargs)` where 
+`sl.node(package, executable, **node_args)` where 
 
 - `package` is the node package
 - `executable` is the name of the executable
-- `kwargs` are any additional `Node` arguments
+- `node_args` are any additional `Node` arguments
 - in particular, `arguments` can be a single string that will be split into a list
 
 ### Launch file include
 
-`sl.include(package, launch_file, launch_dir = None)` where
+`sl.include(package, launch_file, launch_dir = None, launch_arguments=None)` where
 
 - `package` is the package of the included launch file
 - `launch_file` is the name of the launch file
 - `launch_dir` is its directory inside the package share (`None` to have it found)
+- `launch_arguments` is a `(key, value)` list of arguments to pass to the included launch file
 
-## Deal with arguments
+## Launch arguments
 
 The helper class allows declaring launch arguments and getting them in return:
 
@@ -50,7 +51,7 @@ The helper class allows declaring launch arguments and getting them in return:
 
 ## Node groups
 
-Groups are created through the `sl.with()` syntax and accepts both a namespace and an if/unless condition:
+Groups are created through the `sl.with()` syntax and accepts both a namespace and/or an if/unless condition:
 
 ### By namespace
 
