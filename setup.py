@@ -16,7 +16,7 @@ setup(
     # Include examples.
     (os.path.join('share', package_name, 'example'), glob('example/[!_]*'))
     ],
-    install_requires=['setuptools', 'imp', 'xacro', 'ament_index_python'],
+    install_requires=['setuptools', 'imp', 'xacro', 'ament_index_python', 'launch', 'launch_ros'],
     author='Olivier Kermorgant',
     author_email='olivier.kermorgant@ec-nantes.fr',
     maintainer='Olivier Kermorgant',
