@@ -1,9 +1,7 @@
 # simple_launch
 This package provides a Python class to help writing ROS 2 launch files.
 
-The motivation behind this package is that the ROS 2 launch Python syntax may not be suited for many simple cases such as running basic nodes, spawning a `robot_state_publisher`, and grouping nodes in namespaces or components.
-
-**NOTE**: this package uses the [OSRF's ROS 2 xacro package](https://github.com/ros/xacro/tree/dashing-devel).
+The motivation behind this package is that the ROS 2 launch Python syntax may not be suited for many simple cases such as running basic nodes, spawning a `robot_state_publisher`, and grouping nodes in namespaces or components..
 
 **Thanks**: this package is inspired by [ros2_launch_util](https://github.com/bponsler/ros2_launch_util).
 
