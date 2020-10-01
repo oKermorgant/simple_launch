@@ -81,6 +81,22 @@ This syntax adds the `composition/composition::Talker` as a ComposableNode
 
 ## Other shortcuts
 
+## String / substitution concatenation
+
+The following syntax builds `<robot name>.xacro`:
+
+`file_name = sl.name_join(sl.arg('robot'), '.xacro')`
+
+## Path concatenation
+
+The following syntax builds `<my_package_path>/urdf/<robot name>.xacro`:
+
+```
+file_name = sl.name_join(sl.arg('robot'), '.xacro')
+urdf_file = sl.path_join(get_package_share_directory(package), 'urdf', file_name)
+```
+
+
 ### Find a share file
 
 `path = sl.find(package, file_name, file_dir = None)` where:
@@ -89,7 +105,7 @@ This syntax adds the `composition/composition::Talker` as a ComposableNode
 - `file_name` is the name of the file to find
 - `file_dir` is the path inside the package
 
-If `file_dir` is `None` then the `find` function will actually look for the file inside the package share.
+If `file_dir` is `None` then the `find` function will actually look for the file inside the package share, assuming that `package` and `file_name` are raw strings.
 
 ### Robot state publisher
 
