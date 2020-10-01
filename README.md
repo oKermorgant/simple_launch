@@ -1,9 +1,7 @@
 # simple_launch
 This package provides a Python class to help writing ROS 2 launch files.
 
-The motivation behind this package is that the ROS 2 launch Python syntax may not be suited for many simple cases such as running basic nodes, spawning a `robot_state_publisher`, and grouping nodes in namespaces or components.
-
-**NOTE**: this package uses the [OSRF's ROS 2 xacro package](https://github.com/ros/xacro/tree/dashing-devel).
+The motivation behind this package is that the ROS 2 launch Python syntax may not be suited for many simple cases such as running basic nodes, spawning a `robot_state_publisher`, and grouping nodes in namespaces or components..
 
 **Thanks**: this package is inspired by [ros2_launch_util](https://github.com/bponsler/ros2_launch_util).
 
@@ -17,22 +15,23 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 ### Node registration
 
-`sl.node(package, executable, kwargs)` where 
+`sl.node(package, executable, **node_args)` where 
 
 - `package` is the node package
 - `executable` is the name of the executable
-- `kwargs` are any additional `Node` arguments
+- `node_args` are any additional `Node` arguments
 - in particular, `arguments` can be a single string that will be split into a list
 
 ### Launch file include
 
-`sl.include(package, launch_file, launch_dir = None)` where
+`sl.include(package, launch_file, launch_dir = None, launch_arguments=None)` where
 
 - `package` is the package of the included launch file
 - `launch_file` is the name of the launch file
 - `launch_dir` is its directory inside the package share (`None` to have it found)
+- `launch_arguments` is a `(key, value)` list of arguments to pass to the included launch file
 
-## Deal with arguments
+## Launch arguments
 
 The helper class allows declaring launch arguments and getting them in return:
 
@@ -42,7 +41,7 @@ The helper class allows declaring launch arguments and getting them in return:
 
 ### Retrieve a launch argument
 
-`sl.arg(name)`: return the argument `name`
+`sl.arg(name)`: returns the argument `name`
 
 ### Retrieve several arguments as a dictionary
 
@@ -50,7 +49,7 @@ The helper class allows declaring launch arguments and getting them in return:
 
 ## Node groups
 
-Groups are created through the `sl.with()` syntax and accepts both a namespace and an if/unless condition:
+Groups are created through the `sl.with()` syntax and accepts both a namespace and/or an if/unless condition:
 
 ### By namespace
 
@@ -108,7 +107,7 @@ If `file_dir` is `None` then the `find` function will actually look for the file
 
 ### Fallback to low-level syntax
 
-
+If any unavailable functionality is needed, the `sl.entity(entity)` function adds any passed `Entity` at the current namespace / conditional / composition level.
         
 ## Examples
 
