@@ -1,4 +1,4 @@
-from os.path import basename, exists, join, splitext, exists
+from os.path import basename, exists, join, splitext, exists, sep
 
 from imp import load_source
 
@@ -8,10 +8,9 @@ from launch import LaunchDescription
 from launch_ros.actions import Node, PushRosNamespace, ComposableNodeContainer
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.launch_description_sources import AnyLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, TextSubstitution
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.descriptions import ComposableNode
-
 from contextlib import contextmanager
 import sys
 
@@ -41,7 +40,7 @@ class SimpleLauncher:
 
     def arg(self, name):
         '''
-        Retrieve an argument, either by name 
+        Retrieve an argument
         '''
         if type(name) != str:
             return name
@@ -62,6 +61,32 @@ class SimpleLauncher:
         It can also be stored in order to add custom entities
         '''
         return LaunchDescription(self.entities[0])
+    
+    @staticmethod
+    def flatten(l):
+        '''
+        Take a list with possibly sub-(sub-(...))-lists elements and make it to a 1-dim list
+        '''
+        ret = []
+        for elem in l:
+            if type(elem) == list:
+                for sub in SimpleLauncher.flatten(elem):
+                    ret.append(sub)
+            else:
+                ret.append(elem)
+        return ret                
+    
+    @staticmethod
+    def name_join(*elems):
+        return SimpleLauncher.flatten([type(elem) == str and TextSubstitution(text=elem) or elem for elem in elems if elem is not None])
+    
+    @staticmethod
+    def path_join(*pathes):        
+        ret = SimpleLauncher.name_join(pathes[0])
+        for p in pathes[1:]:
+            ret.append(TextSubstitution(text=sep))
+            ret.append(p)
+        return SimpleLauncher.flatten(ret)
      
     @staticmethod
     def find(package, file_name, file_dir = None):
@@ -74,16 +99,13 @@ class SimpleLauncher:
         
         If any argument is neither string nore None, assumes use of parameters and returns the corresponding Substitution
         '''
-        # deal with non-resolvable package - cannot find anything in there
-        if not regular_path_elem(package):
-            return PathJoinSubstitution([entry for entry in (package, file_dir, file_name) if entry is not None])
         
         # resolve package
         package_dir = package and get_package_share_directory(package) or None
         
-        # deal with other launch arguments
-        if not regular_path_elem(file_name) or not regular_path_elem(file_dir):
-            return PathJoinSubstitution([entry for entry in (package_dir, file_dir, file_name) if entry is not None])
+        # deal with non-resolvable package - cannot find anything in there
+        if not regular_path_elem(package) or not regular_path_elem(file_name) or not regular_path_elem(file_dir):
+            return SimpleLauncher.path_join(package_dir, file_dir, file_name)
         
         # below this point all arguments are strings or None
         if package_dir == None:
@@ -220,8 +242,10 @@ class SimpleLauncher:
             return urdf_xml
         
         # go for xacro output, compatible with launch parameters
-        cmd = ['ros2 run xacro xacro ', description_file]
-        
+        if type(description_file) == str:
+            cmd = ['xacro ' + description_file]
+        else:
+            cmd = ['xacro '] + description_file
         if xacro_args is not None:            
             if type(xacro_args) == str:
                 # user has passed raw args
@@ -235,8 +259,7 @@ class SimpleLauncher:
                             cmd.append(v)
                     else:
                         cmd.append(val)
-        
-        return Command(cmd)
+        return Command(SimpleLauncher.name_join(*cmd))
         
     def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, **node_args):
         '''
