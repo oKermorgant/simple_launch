@@ -5,7 +5,7 @@ from imp import load_source
 from ros2run.api import get_executable_path
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch_ros.actions import Node, PushRosNamespace, ComposableNodeContainer
+from launch_ros.actions import Node, PushRosNamespace, ComposableNodeContainer, LoadComposableNodes
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, TextSubstitution
@@ -157,9 +157,10 @@ class SimpleLauncher:
             self.entity(GroupAction(new_entities, condition=condition))
             
     @contextmanager
-    def container(self, name, namespace = '', **container_args):
+    def container(self, name, namespace = '', existing = False, **container_args):
         '''
         Opens a Composition group to add nodes
+        If existing is True, then loads nodes in the (supposely) existing container
         '''
         prev_index = self.index
 
@@ -176,14 +177,21 @@ class SimpleLauncher:
             self.composed = False
                         
             # store ComposableNodes inside a Container
-            self.entity(
-            ComposableNodeContainer(
-            name=name,
-            namespace=namespace,
-            package='rclcpp_components',
-            executable='component_container',
-            composable_node_descriptions=new_entities,
-            **container_args))
+            if existing:
+                self.entity(
+                    LoadComposableNodes(
+                        composable_node_descriptions = new_entities,
+                        target_container=name
+                        ))
+            else:
+                self.entity(
+                ComposableNodeContainer(
+                name=name,
+                namespace=namespace,
+                package='rclcpp_components',
+                executable='component_container',
+                composable_node_descriptions=new_entities,
+                **container_args))
             
     def entity(self, entity):
         '''
