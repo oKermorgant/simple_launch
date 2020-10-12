@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.1 (2020-10-12)
+------------------
 * PythonExpression shortcut
 * xacro args now take substitution args
 * add LoadComposableNode feature for existing containers
