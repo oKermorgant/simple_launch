@@ -8,7 +8,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node, PushRosNamespace, ComposableNodeContainer, LoadComposableNodes
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.launch_description_sources import AnyLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, TextSubstitution
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, TextSubstitution, PythonExpression
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.descriptions import ComposableNode
 from contextlib import contextmanager
@@ -75,6 +75,13 @@ class SimpleLauncher:
             else:
                 ret.append(elem)
         return ret                
+    
+    @staticmethod
+    def py_eval(*elems):
+        '''
+        Evaluates the Python expression
+        '''
+        return PythonExpression(elems)
     
     @staticmethod
     def name_join(*elems):
