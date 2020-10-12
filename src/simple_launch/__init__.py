@@ -261,7 +261,9 @@ class SimpleLauncher:
             else:
                 # args as a dict
                 for key, val in xacro_args.items():
-                    cmd.append(' {}:='.format(key))
+                    cmd.append(' ')
+                    cmd.append(key)
+                    cmd.append(':=')
                     if type(val) == list:
                         for v in val:
                             cmd.append(v)
