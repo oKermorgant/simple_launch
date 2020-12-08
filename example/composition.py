@@ -9,7 +9,6 @@ def generate_launch_description():
     with sl.container(name='my_container', output='screen'):
         sl.node(package='composition', plugin='Talker', name='talker')        
 
-    
     # load Listener into existing container if corresponding arg is True
     with sl.group(if_arg='listener'):
         with sl.container(name='my_container', existing=True):
