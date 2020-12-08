@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* composition with existing container
+* Contributors: Olivier Kermorgant
+
 1.0.1 (2020-10-12)
 ------------------
 * PythonExpression shortcut
