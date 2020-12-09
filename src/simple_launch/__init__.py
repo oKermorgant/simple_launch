@@ -17,6 +17,8 @@ import sys
 def regular_path_elem(path):
     return path is None or type(path) == str
 
+
+
 class SimpleLauncher:
     def __init__(self, namespace = ''):
         '''
@@ -45,8 +47,7 @@ class SimpleLauncher:
         if type(name) != str:
             return name
         return LaunchConfiguration(name)
-        
-    
+            
     def arg_map(self, names, to_update={}):
         '''
         Retrieves several arguments as a dict
@@ -211,12 +212,12 @@ class SimpleLauncher:
         Add a node to the launch tree.
         
         * package -- name of the package
-        * executable (classical node) -- name of the node within the package
+        * executable (classical node) -- name of the node within the package, if None then assumes the node has the name of the package
         * plugin (inside a composition group) -- name of the composed node plugin within the package
         * node_args -- any other args passed to the node constructor
         ''' 
         if executable is None and not self.composed:
-            raise Exception('Indicate the executable name when adding a classical node')
+            executable = package
         if plugin is None and self.composed:
             raise Exception('Indicate the plugin name when adding a composable node')
         
@@ -299,7 +300,7 @@ class SimpleLauncher:
             node_args['parameters'] = {'robot_description': urdf_xml}
             
         # Launch the robot state publisher with the desired URDF
-        self.node("robot_state_publisher", "robot_state_publisher", **node_args)
+        self.node("robot_state_publisher", **node_args)
         
     def joint_state_publisher(self, use_gui = True, **node_args):
         '''
@@ -309,9 +310,6 @@ class SimpleLauncher:
         if type(use_gui) == bool:
             use_gui = str(use_gui)
             
-        pkg_exec = 'joint_state_publisher'
-        self.node(pkg_exec, pkg_exec, parameters = node_args, condition=UnlessCondition(use_gui))
-
-        pkg_exec = 'joint_state_publisher_gui'
-        self.node(pkg_exec, pkg_exec, parameters = node_args, condition=IfCondition(use_gui))
+        self.node('joint_state_publisher', parameters = node_args, condition=UnlessCondition(use_gui))
+        self.node('joint_state_publisher_gui', parameters = node_args, condition=IfCondition(use_gui))
         
