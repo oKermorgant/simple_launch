@@ -64,18 +64,11 @@ class SimpleLauncher:
         return LaunchDescription(self.entities[0])
     
     @staticmethod
-    def flatten(l):
+    def flatten(nested):
         '''
         Take a list with possibly sub-(sub-(...))-lists elements and make it to a 1-dim list
         '''
-        ret = []
-        for elem in l:
-            if type(elem) == list:
-                for sub in SimpleLauncher.flatten(elem):
-                    ret.append(sub)
-            else:
-                ret.append(elem)
-        return ret                
+        return sum([SimpleLauncher.flatten(elem) if type(elem)==list else [elem] for elem in nested],[])        
     
     @staticmethod
     def py_eval(*elems):
@@ -86,7 +79,7 @@ class SimpleLauncher:
     
     @staticmethod
     def name_join(*elems):
-        return SimpleLauncher.flatten([type(elem) == str and TextSubstitution(text=elem) or elem for elem in elems if elem is not None])
+        return SimpleLauncher.flatten([TextSubstitution(text=elem) if type(elem)==str else elem for elem in elems if elem is not None])
     
     @staticmethod
     def path_join(*pathes):        
@@ -269,15 +262,10 @@ class SimpleLauncher:
             else:
                 # args as a dict
                 for key, val in xacro_args.items():
-                    cmd.append(' ')
-                    cmd.append(key)
-                    cmd.append(':=')
-                    if type(val) == list:
-                        for v in val:
-                            cmd.append(v)
-                    else:
-                        cmd.append(val)
-        return Command(SimpleLauncher.name_join(*cmd))
+                    cmd += [' ', key]
+                    if val is not None:
+                        cmd += self.flatten([':=',val])
+        return self.name_join("'",Command(SimpleLauncher.name_join(*cmd)),"'")
         
     def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, **node_args):
         '''
