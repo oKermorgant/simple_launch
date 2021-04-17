@@ -2,6 +2,15 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* solve typo in node_args
+* better handling of node arguments in nested lists
+* bug fixes around Substitutions
+* Merge pull request `#1 <https://github.com/oKermorgant/simple_launch/issues/1>`_ from oKermorgant/master
+  deduce executable from package name if needed
+* Contributors: Olivier Kermorgant
+
 1.0.2 (2020-12-08)
 ------------------
 * composition with existing container
