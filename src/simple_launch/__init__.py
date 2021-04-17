@@ -238,7 +238,7 @@ class SimpleLauncher:
             for i,arg in enumerate(args):
                 if type(arg)==str:
                     args[i] = [TextSubstitution(text=kw) for kw in arg.split() if kw]
-            args['arguments'] = SimpleLauncher.flatten(args)
+            node_args['arguments'] = SimpleLauncher.flatten(args)
         if 'parameters' in node_args:
             if type(node_args['parameters']) == dict:
                 node_args['parameters'] =  [node_args['parameters']]
