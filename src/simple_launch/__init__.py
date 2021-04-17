@@ -39,6 +39,13 @@ class SimpleLauncher:
             name,
             default_value=str(default_value),
             description=description))
+        
+    def declare_gazebo_axes(self):
+        '''
+        Declares classical Gazebo axes as launch arguments
+        '''        
+        for axis in ('x','y','z','roll','pitch','yaw'):
+            self.declare_arg(axis, default_value=0.)
 
     def arg(self, name):
         '''
@@ -78,15 +85,27 @@ class SimpleLauncher:
         return PythonExpression(elems)
     
     @staticmethod
+    def py_eval_str(*elems):
+        '''
+        Evaluates the Python expression as a string
+        '''
+        return SimpleLauncher.name_join("'",PythonExpression(elems),"'")
+    
+    @staticmethod
     def name_join(*elems):
         return SimpleLauncher.flatten([TextSubstitution(text=elem) if type(elem)==str else elem for elem in elems if elem is not None])
     
+    def gazebo_axes_args(self):
+        '''
+        Generate arguments corresponding to Gazebo spawner
+        '''
+        axes={'x': 'x', 'y': 'y', 'z': 'z', 'roll': 'R', 'pitch': 'P', 'yaw': 'Y'}
+        return [['-'+tag, self.arg(axis)] for axis,tag in axes.items()]    
+    
     @staticmethod
-    def path_join(*pathes):        
-        ret = SimpleLauncher.name_join(pathes[0])
-        for p in pathes[1:]:
-            ret.append(TextSubstitution(text=sep))
-            ret.append(p)
+    def path_join(*pathes):
+        ret = [TextSubstitution(text=sep)]*(2*len(pathes)-1)
+        ret[::2] = pathes
         return SimpleLauncher.flatten(ret)
      
     @staticmethod
@@ -214,14 +233,17 @@ class SimpleLauncher:
         if plugin is None and self.composed:
             raise Exception('Indicate the plugin name when adding a composable node')
         
-        if 'arguments' in node_args and type(node_args['arguments']) != list:
-            if type(node_args['arguments']) == str:
-                node_args['arguments'] = node_args['arguments'].split()
-            else:
-                node_args['arguments'] = [node_args['arguments']]
-        if 'parameters' in node_args and type(node_args['parameters']) == dict:
-            node_args['parameters'] =  [node_args['parameters']]
-            
+        if 'arguments' in node_args:
+            args = SimpleLauncher.flatten([node_args['arguments']])
+            for i,arg in enumerate(args):
+                if type(arg)==str:
+                    args[i] = [TextSubstitution(text=kw) for kw in arg.split() if kw]
+            args['arguments'] = SimpleLauncher.flatten(args)
+        if 'parameters' in node_args:
+            if type(node_args['parameters']) == dict:
+                node_args['parameters'] =  [node_args['parameters']]
+            elif type(node_args['parameters']) == list and all(type(elem)==dict for elem in node_args['parameters']):
+                node_args['parameters']=[dict(kv for d in node_args['parameters'] for kv in d.iteritems())]
         if not self.composed:
             self.entity(Node(package=package, executable=executable, **node_args))
         else:
