@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.3 (2021-04-17)
+------------------
 * solve typo in node_args
 * better handling of node arguments in nested lists
 * bug fixes around Substitutions
