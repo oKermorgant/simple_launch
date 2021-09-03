@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* some Python2 legacy bugs
+* Contributors: Olivier Kermorgant
+
 1.0.3 (2021-04-17)
 ------------------
 * solve typo in node_args
