@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.4 (2021-09-03)
+------------------
 * some Python2 legacy bugs
 * Contributors: Olivier Kermorgant
 
