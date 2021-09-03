@@ -243,7 +243,7 @@ class SimpleLauncher:
             if type(node_args['parameters']) == dict:
                 node_args['parameters'] =  [node_args['parameters']]
             elif type(node_args['parameters']) == list and all(type(elem)==dict for elem in node_args['parameters']):
-                node_args['parameters']=[dict(kv for d in node_args['parameters'] for kv in d.iteritems())]
+                node_args['parameters']=[dict(kv for d in node_args['parameters'] for kv in d.items())]
         if not self.composed:
             self.entity(Node(package=package, executable=executable, **node_args))
         else:
