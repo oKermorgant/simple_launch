@@ -39,7 +39,10 @@ def adapt_type(params, target):
         
         if all(type(elem) in (tuple,list) and len(elem) == 2 for elem in params):
             # (key, val) pairs
-            return adapt_type(dict(params), target)
+            return adapt_type(dict(params), target)    
+    
+    print('Could not get the passed type of arguments:', params)
+    return params
 
 class SimpleLauncher:
     def __init__(self, namespace = ''):
@@ -253,14 +256,7 @@ class SimpleLauncher:
         if executable is None and not self.composed:
             executable = package
         if plugin is None and self.composed:
-            raise Exception('Indicate the plugin name when adding a composable node')
-        
-        if 'arguments' in node_args:
-            args = SimpleLauncher.flatten([node_args['arguments']])
-            for i,arg in enumerate(args):
-                if type(arg)==str:
-                    args[i] = [TextSubstitution(text=kw) for kw in arg.split() if kw]
-            node_args['arguments'] = SimpleLauncher.flatten(args)
+            raise Exception('Indicate the plugin name when adding a composable node')        
         
         for key,target in (('parameters',NODE_PARAMS),('remappings',NODE_REMAPS)):
             if key in node_args:

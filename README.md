@@ -19,8 +19,7 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 - `package` is the node package
 - `executable` is the name of the executable
-- `node_args` are any additional `Node` arguments
-- in particular, `arguments` can be a single string that will be split into a list
+- `node_args` are any additional `Node` arguments given as a list
 
 ### Launch file include
 
