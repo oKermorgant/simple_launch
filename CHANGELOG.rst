@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.6 (2021-09-22)
+------------------
 * node arguments is a raw list and accepts substitutions
 * Contributors: Olivier Kermorgant
 
