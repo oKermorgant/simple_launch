@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* automagically convert to expected type for node parameters, remappings, launch arguments
+* Contributors: Olivier Kermorgant
+
 1.0.4 (2021-09-03)
 ------------------
 * some Python2 legacy bugs
