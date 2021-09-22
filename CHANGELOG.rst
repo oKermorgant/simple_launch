@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.0.5 (2021-09-22)
+------------------
 * automagically convert to expected type for node parameters, remappings, launch arguments
 * Contributors: Olivier Kermorgant
 
