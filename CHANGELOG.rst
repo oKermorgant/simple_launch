@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* node arguments is a raw list and accepts substitutions
+* Contributors: Olivier Kermorgant
+
 1.0.5 (2021-09-22)
 ------------------
 * automagically convert to expected type for node parameters, remappings, launch arguments
