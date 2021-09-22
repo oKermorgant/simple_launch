@@ -29,7 +29,17 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 - `package` is the package of the included launch file
 - `launch_file` is the name of the launch file
 - `launch_dir` is its directory inside the package share (`None` to have it found)
-- `launch_arguments` is a `(key, value)` list of arguments to pass to the included launch file
+- `launch_arguments` is a list of arguments to pass to the included launch file
+
+### Robust types for parameters
+
+In the launch API, differents types are expected for:
+
+- node parameters: a list of dictionaries
+- node remappings: a list of (`key`, `value`) pairs
+- included launch arguments: a list of (`key`, `value`) pairs
+
+The `sl.include` and `sl.node` syntax allow using any type (the simplest being a single dictionary)  and will convert to the one expected by the API.
 
 ## Launch arguments
 

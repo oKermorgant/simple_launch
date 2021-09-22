@@ -17,7 +17,29 @@ import sys
 def regular_path_elem(path):
     return path is None or type(path) == str
 
+NODE_REMAPS = LAUNCH_ARGS = 1
+NODE_PARAMS = 2
 
+def adapt_type(params, target):
+    # detect type of passed params and adapts to launch API
+    # NODE_PARAMS expects a list with 1 or several dict
+    # NODE_REMAPS and LAUNCH_ARGS expect a list of (key,value) tuples
+    
+    if type(params) == dict:        
+        if target == NODE_PARAMS:
+            return [params]
+        else:            
+            return params.items()
+        
+    if type(params) in (list, tuple):
+                
+        if all(type(elem)==dict for elem in params):
+            # to dict
+            return adapt_type(dict(key_val for elem in params for key_val in elem.items()), target)
+        
+        if all(type(elem) in (tuple,list) and len(elem) == 2 for elem in params):
+            # (key, val) pairs
+            return adapt_type(dict(params), target)
 
 class SimpleLauncher:
     def __init__(self, namespace = ''):
@@ -239,11 +261,11 @@ class SimpleLauncher:
                 if type(arg)==str:
                     args[i] = [TextSubstitution(text=kw) for kw in arg.split() if kw]
             node_args['arguments'] = SimpleLauncher.flatten(args)
-        if 'parameters' in node_args:
-            if type(node_args['parameters']) == dict:
-                node_args['parameters'] =  [node_args['parameters']]
-            elif type(node_args['parameters']) == list and all(type(elem)==dict for elem in node_args['parameters']):
-                node_args['parameters']=[dict(kv for d in node_args['parameters'] for kv in d.items())]
+        
+        for key,target in (('parameters',NODE_PARAMS),('remappings',NODE_REMAPS)):
+            if key in node_args:
+                node_args[key] = adapt_type(node_args[key], target)
+                
         if not self.composed:
             self.entity(Node(package=package, executable=executable, **node_args))
         else:
@@ -258,7 +280,8 @@ class SimpleLauncher:
         '''
         launch_file = self.find(package, launch_file, launch_dir)
         self.entity(IncludeLaunchDescription(
-            AnyLaunchDescriptionSource(launch_file), launch_arguments=launch_arguments))
+            AnyLaunchDescriptionSource(launch_file),
+            launch_arguments=adapt_type(launch_arguments, LAUNCH_ARGS)))
         
     def robot_description(self, package=None, description_file=None, description_dir=None, xacro_args=None):
         '''
@@ -305,7 +328,7 @@ class SimpleLauncher:
         urdf_xml = self.robot_description(package, description_file, description_dir, xacro_args)
         
         if 'parameters' in node_args:
-            node_args['parameters'].update({'robot_description': urdf_xml})
+            node_args['parameters'] = adapt_type(node_args['parameters'], NODE_PARAMS) + [{'robot_description': urdf_xml}]
         else:
             node_args['parameters'] = {'robot_description': urdf_xml}
             
