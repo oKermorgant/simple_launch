@@ -11,6 +11,7 @@
   <depend>launch</depend>
   <depend>launch_ros</depend>
   <depend>xacro</depend>
+  <depend>ament_index_python</depend>
    
   <export>
     <build_type>ament_python</build_type>

@@ -289,7 +289,7 @@ class SimpleLauncher:
         if type(description_file) == str and description_file.endswith('urdf') and xacro_args is None:
             with open(description_file) as f:
                 urdf_xml = f.read()
-            return urdf_xml
+            return self.name_join("'", urdf_xml, "'")
         
         # go for xacro output, compatible with launch parameters
         if type(description_file) == str:
@@ -308,7 +308,7 @@ class SimpleLauncher:
                         cmd += self.flatten([':=',val])
         return self.name_join("'",Command(SimpleLauncher.name_join(*cmd)),"'")
         
-    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, **node_args):
+    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, frame_prefix=None, **node_args):
         '''
         Add a robot state publisher node to the launch tree using the given description (urdf / xacro) file.
         
@@ -322,11 +322,17 @@ class SimpleLauncher:
 
         '''
         urdf_xml = self.robot_description(package, description_file, description_dir, xacro_args)
+                
+        if frame_prefix is not None:
+            urdf_xml = Command(SimpleLauncher.name_join(['ros2 run simple_launch frame_prefix_gazebo ', urdf_xml, ' ', frame_prefix]))
         
         if 'parameters' in node_args:
             node_args['parameters'] = adapt_type(node_args['parameters'], NODE_PARAMS) + [{'robot_description': urdf_xml}]
         else:
-            node_args['parameters'] = {'robot_description': urdf_xml}
+            node_args['parameters'] = [{'robot_description': urdf_xml}]
+        
+        if frame_prefix is not None:
+            node_args['parameters'] += [{'frame_prefix': frame_prefix}]
             
         # Launch the robot state publisher with the desired URDF
         self.node("robot_state_publisher", **node_args)

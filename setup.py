@@ -16,7 +16,7 @@ setup(
     # Include examples.
     (os.path.join('share', package_name, 'example'), glob('example/[!_]*'))
     ],
-    install_requires=['setuptools', 'imp', 'xacro', 'ament_index_python', 'launch', 'launch_ros'],
+    install_requires=['setuptools'],
     author='Olivier Kermorgant',
     author_email='olivier.kermorgant@ec-nantes.fr',
     maintainer='Olivier Kermorgant',
@@ -32,4 +32,10 @@ setup(
     ],
     description='Python helpers for the ROS 2 launch system',
     license='MIT',
+        # scripts here.
+    entry_points={
+        'console_scripts': [
+            'frame_prefix_gazebo = simple_launch.frame_prefix_gazebo:main'
+        ],
+    },
 )
