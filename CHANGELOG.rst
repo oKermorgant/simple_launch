@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* add capacity to prefix and namespace Gazebo-published messages, as an alternative to using Gazebo namespaces that also remap /tf
+* Contributors: Olivier Kermorgant
+
 1.0.6 (2021-09-22)
 ------------------
 * node arguments is a raw list and accepts substitutions
