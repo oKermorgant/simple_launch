@@ -171,14 +171,11 @@ class SimpleLauncher:
         raise Exception('Could not find file {} in package {}'.format(file_name, package))
     
     def group_level_down(self):
-        #print('Current index: ', self.index)
         self.entities.append([])
         self.ns_graph[len(self.entities)-1] = self.index
         self.index = len(self.entities)-1
-        #print('New index: ', self.index)
         
     def group_level_up(self):
-        #print(f'Restoring index {self.index} -> {self.ns_graph[self.index]}')
         new_entities = self.entities[self.index]
         self.index = self.ns_graph[self.index]
         return new_entities
