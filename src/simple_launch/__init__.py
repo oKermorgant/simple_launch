@@ -51,6 +51,7 @@ class SimpleLauncher:
         '''
         self.entities = [[]]
         self.index = 0
+        self.ns_graph = {0: -1}
         self.composed = False
         
         if namespace:
@@ -168,6 +169,34 @@ class SimpleLauncher:
             
         # not there
         raise Exception('Could not find file {} in package {}'.format(file_name, package))
+    
+    def group_level_down(self):
+        #print('Current index: ', self.index)
+        self.entities.append([])
+        self.ns_graph[len(self.entities)-1] = self.index
+        self.index = len(self.entities)-1
+        #print('New index: ', self.index)
+        
+    def group_level_up(self):
+        #print(f'Restoring index {self.index} -> {self.ns_graph[self.index]}')
+        new_entities = self.entities[self.index]
+        self.index = self.ns_graph[self.index]
+        return new_entities
+    
+    def abs_node_ns(self, node_args = {}):
+        
+        ns = []
+        if 'namespace' in node_args:
+            ns.insert(0, node_args['namespace'])
+            
+        index = self.index    
+        while index in self.ns_graph:
+            if len(self.entities[index]):
+                head = self.entities[index][0]
+                if(type(head) == PushRosNamespace):
+                    ns.insert(0, head.namespace)
+            index = self.ns_graph[index]
+        return self.name_join(["'"], self.path_join(*ns), ["'"])
        
     @contextmanager
     def group(self, ns=None, if_arg=None, unless_arg=None):
@@ -176,21 +205,16 @@ class SimpleLauncher:
          - another namespace
          - a if / unless condition depending on some argument
         '''
-        # save current entity index
-        prev_index = self.index
-
-        self.entities.append([])
-        self.index = len(self.entities)-1
+        self.group_level_down()
+        
         if ns is not None:
-            self.entities[-1].append(PushRosNamespace(ns))
+            self.entity(PushRosNamespace(ns))
             
         try:
             yield self
         finally:
-                        
-            new_entities = self.entities[self.index]
-            # restore state
-            self.index = prev_index
+            
+            new_entities = self.group_level_up()
             
             condition = None
             # get condition
@@ -201,25 +225,22 @@ class SimpleLauncher:
             # add new entities as sub-group
             self.entity(GroupAction(new_entities, condition=condition))
             
+            
     @contextmanager
     def container(self, name, namespace = '', existing = False, **container_args):
         '''
         Opens a Composition group to add nodes
         If existing is True, then loads nodes in the (supposely) existing container
         '''
-        prev_index = self.index
-
-        self.entities.append([])
-        self.index = len(self.entities)-1
+        self.group_level_down()
+        
         self.composed = True
         try:
             yield self
         finally:
             
-            # restore state 
-            new_entities = self.entities[self.index]
-            self.index = prev_index
             self.composed = False
+            new_entities = self.group_level_up()
                         
             # store ComposableNodes inside a Container
             if existing:
@@ -237,6 +258,7 @@ class SimpleLauncher:
                 executable='component_container',
                 composable_node_descriptions=new_entities,
                 **container_args))
+                
             
     def entity(self, entity):
         '''
@@ -306,9 +328,9 @@ class SimpleLauncher:
                     cmd += [' ', key]
                     if val is not None:
                         cmd += self.flatten([':=',val])
-        return self.name_join("'",Command(SimpleLauncher.name_join(*cmd)),"'")
+        return self.name_join("'",Command(SimpleLauncher.name_join(*cmd)),"'")        
         
-    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, frame_prefix=None, **node_args):
+    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, gz_plugins=False, namespaced_tf = False, **node_args):
         '''
         Add a robot state publisher node to the launch tree using the given description (urdf / xacro) file.
         
@@ -318,21 +340,39 @@ class SimpleLauncher:
         * description_file -- is the name of the urdf/xacro file
         * description_dir -- the name of the directory containing the file (None to have it found)
         * xacro_args -- arguments passed to xacro (will force use of xacro)
+        * gz_plugins -- will forward any frame_prefix and node namespace to Gazebo plugins (bypasses using Gazebo spawner namespace)
+        * namespaced_tf -- equivalent to remapping /tf and /tf_static to local namespace
         * node_args -- any additional node arguments such as remappings 
-
         '''
+        
         urdf_xml = self.robot_description(package, description_file, description_dir, xacro_args)
-                
-        if frame_prefix is not None:
-            urdf_xml = Command(SimpleLauncher.name_join(['ros2 run simple_launch frame_prefix_gazebo ', urdf_xml, ' ', frame_prefix]))
         
+        frame_prefix = ""
         if 'parameters' in node_args:
-            node_args['parameters'] = adapt_type(node_args['parameters'], NODE_PARAMS) + [{'robot_description': urdf_xml}]
+            node_args['parameters'] = adapt_type(node_args['parameters'], NODE_PARAMS)
+            if 'frame_prefix' in node_args['parameters'][0]:
+                frame_prefix = node_args['parameters'][0]['frame_prefix']
         else:
-            node_args['parameters'] = [{'robot_description': urdf_xml}]
-        
-        if frame_prefix is not None:
-            node_args['parameters'] += [{'frame_prefix': frame_prefix}]
+            node_args['parameters'] = []
+        frame_prefix = self.name_join("'", frame_prefix, "'")
+                
+        if gz_plugins:
+            urdf_xml = Command(SimpleLauncher.name_join(['ros2 run simple_launch frame_prefix_gazebo',
+                                                         ' -d ', urdf_xml, 
+                                                         ' --frame_prefix ', frame_prefix,
+                                                         ' --ns ', self.abs_node_ns(node_args)]))
+                
+        node_args['parameters'] += [{'robot_description': urdf_xml}]
+            
+        if namespaced_tf:
+            remaps = {'/tf':'tf', '/tf_static':'tf_static'}
+            if 'remappings' in node_args:
+                if type(node_args['remappings']) == dict:
+                    node_args['remappings'].update(remaps)
+                else:
+                    node_args['remappings'] += [remaps]
+            else:
+                node_args['remappings'] = remaps
             
         # Launch the robot state publisher with the desired URDF
         self.node("robot_state_publisher", **node_args)
