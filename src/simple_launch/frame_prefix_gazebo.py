@@ -3,29 +3,23 @@ import sys
 import xml.etree.ElementTree as ET
 import argparse
 
-def update(element, links, prefix, namespace):
+def update(element, links, prefix):
     for child in element:
         if 'frame' in child.tag or 'Frame' in child.tag:
             if child.text in links:
                 child.text = prefix + child.text
-        elif 'topic' in child.tag or 'Topic' in child.tag:
-            if not child.text.startswith('/'):
-                child.text = namespace + child.text
         else:
-            update(child, links, prefix, namespace)
+            update(child, links, prefix)
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.description = 'On-the-fly update of Gazebo plugins specs in a robot description'
     parser.add_argument('-d','--description', type=str, help='Raw robot description')
     parser.add_argument('--frame_prefix',type=str, help='Frame prefix', default='')
-    parser.add_argument('--ns', type=str, help='Robot namespace', default='')
     
     args = parser.parse_args()
-    if args.ns and not args.ns.endswith('/'):
-        args.ns += '/'
     
-    if not args.ns and not args.frame_prefix:
+    if args.frame_prefix == '':
         print(args.description)
         
     xml = ET.fromstring(args.description)
@@ -35,7 +29,7 @@ def main():
     
     # we only care about renaming inside Gazebo tags
     for gz in xml.iter('gazebo'):
-        update(gz, links, args.frame_prefix, args.ns)
+        update(gz, links, args.frame_prefix)
     
     # print to stdout and let SimpleLauncher pass it to robot_state_publisher
     ET.dump(xml)

@@ -118,12 +118,12 @@ If `file_dir` is `None` then the `find` function will actually look for the file
 
 ### Robot state publisher
 
-`sl.robot_state_publisher(package, description_file, description_dir=None, xacro_args=None, gz_plugins=False, **node_args)` where
+`sl.robot_state_publisher(package, description_file, description_dir=None, xacro_args=None, prefix_gz_plugins=False, **node_args)` where
 
 - `description_file` is a URDF or xacro file
 - `description_dir` is the sub-directory of the file. If omitted, let the script search for the file assuming it is a raw string
 - `xacro_args` are passed to xacro
-- `gz_plugins` is an alternative to Gazebo namespaces (that also remap `/tf`). It allows hard-coding the `frame_prefix` and the robot namespace (if any) inside Gazebo-published messages
+- `prefix_gz_plugins` is used only if a `frame_prefix` parameter is given to `robot_state_publisher`. In this case it will forward the frame prefix to Gazebo-published messages that include frame names
 - `node_args` are any additional arguments for `robot_state_publisher` (typically remapping)
 
 ### Joint state publisher

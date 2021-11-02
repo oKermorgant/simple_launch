@@ -325,9 +325,9 @@ class SimpleLauncher:
                     cmd += [' ', key]
                     if val is not None:
                         cmd += self.flatten([':=',val])
-        return self.name_join("'",Command(SimpleLauncher.name_join(*cmd)),"'")        
+        return self.name_join("'",Command(SimpleLauncher.name_join(*cmd)),"'")
         
-    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, gz_plugins=False, namespaced_tf = False, **node_args):
+    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False, namespaced_tf = False, **node_args):
         '''
         Add a robot state publisher node to the launch tree using the given description (urdf / xacro) file.
         
@@ -337,7 +337,7 @@ class SimpleLauncher:
         * description_file -- is the name of the urdf/xacro file
         * description_dir -- the name of the directory containing the file (None to have it found)
         * xacro_args -- arguments passed to xacro (will force use of xacro)
-        * gz_plugins -- will forward any frame_prefix and node namespace to Gazebo plugins (bypasses using Gazebo spawner namespace)
+        * prefix_gz_plugins -- will forward any frame_prefix to frame names published by Gazebo plugins
         * namespaced_tf -- equivalent to remapping /tf and /tf_static to local namespace
         * node_args -- any additional node arguments such as remappings 
         '''
@@ -353,11 +353,10 @@ class SimpleLauncher:
             node_args['parameters'] = []
         frame_prefix = self.name_join("'", frame_prefix, "'")
                 
-        if gz_plugins:
+        if prefix_gz_plugins:
             urdf_xml = Command(SimpleLauncher.name_join(['ros2 run simple_launch frame_prefix_gazebo',
                                                          ' -d ', urdf_xml, 
-                                                         ' --frame_prefix ', frame_prefix,
-                                                         ' --ns ', self.abs_node_ns(node_args)]))
+                                                         ' --frame_prefix ', frame_prefix]))
                 
         node_args['parameters'] += [{'robot_description': urdf_xml}]
             
