@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.2.0 (2021-11-02)
+------------------
 * make it clearer for the prefix_gz_plugins param
 * Contributors: Olivier Kermorgant
 
