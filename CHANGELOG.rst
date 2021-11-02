@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* make it clearer for the prefix_gz_plugins param
+* Contributors: Olivier Kermorgant
+
 1.1.0 (2021-09-25)
 ------------------
 * add capacity to prefix and namespace Gazebo-published messages, as an alternative to using Gazebo namespaces that also remap /tf
