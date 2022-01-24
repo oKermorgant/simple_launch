@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.2.1 (2022-01-24)
+------------------
 * add Ignition support
 * Contributors: Olivier Kermorgant
 
