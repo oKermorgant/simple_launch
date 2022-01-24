@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* add Ignition support
+* Contributors: Olivier Kermorgant
+
 1.2.0 (2021-11-02)
 ------------------
 * make it clearer for the prefix_gz_plugins param
