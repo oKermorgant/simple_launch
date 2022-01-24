@@ -88,15 +88,50 @@ This syntax adds the `composition/composition::Talker` as a ComposableNode
     sl.node(package='composition', plugin='Talker', name='talker')
 ```
 
+## Simulation and `use_sim_time`
+
+Calling `sl.auto_sim_time()` will detect (and return) if the `/clock` topic is advertized. (typically by a simulator).
+If this is the case then all subsequent nodes will be run with `use_sim_time:=True`, unless this parameter is explicitely given.
+
+### Spawn a model
+
+The `sl.spawn_ign_model(name, topic, spawn_args = [])` functions allows easily spawing a model from its `robot_description`:
+
+- `name` is the name this model will get in Ignition
+- `topic` is the topic to obtain the model from, default is `robot_description`
+- `spawn_args` are any additional spawn arguments, e.g. the initial pose
+
+### Ignition world
+
+The `IgnitionBridge` class has a few static methods to interact with a running ignition. Namely:
+
+- `IgnitionBridge.world()` returns the current world name
+- `IgnitionBridge.model_prefix(model)` builds the Ignition topic relative to the given model `/world/<world>/model`
+- `IgnitionBridge.has_model(model)` returns `True` of `False` depending on the passed model being in Ignition
+
+### Ignition bridge
+
+The `IgnitionBridge` class allows easily creating bridges when running Ignition.
+
+An instance is created with: `bridge = IgnitionBridge(<ignition_topic>, <ros_topic>, <ros_message>, direction)` where `direction` is either:
+
+- `IgnitionBridge.ign2ros` for Ignition -> ROS
+- `IgnitionBridge.ros2ign` for ROS -> Ignition
+- `IgnitionBridge.bidirectional` for both
+
+The Ignition message type is deduced from the ros message type. Remapping will be set to the given `ros_topic`.
+
+The SimpleLauncher instance can then run all created bridges with: `sl.create_ign_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
+
 ## Other shortcuts
 
-## String / substitution concatenation
+### String / substitution concatenation
 
 The following syntax builds `<robot name>.xacro`:
 
 `file_name = sl.name_join(sl.arg('robot'), '.xacro')`
 
-## Path concatenation
+### Path concatenation
 
 The following syntax builds `<my_package_path>/urdf/<robot name>.xacro`:
 
@@ -133,6 +168,7 @@ If `file_dir` is `None` then the `find` function will actually look for the file
 ### Fallback to low-level syntax
 
 If any unavailable functionality is needed, the `sl.entity(entity)` function adds any passed `Entity` at the current namespace / conditional / composition level.
+        
         
 ## Examples
 
@@ -222,4 +258,43 @@ def generate_launch_description():
         sl.node(package='composition', plugin='Listener', name='listener')
         
     return sl.launch_description()
+```
+
+### Ignition bridge
+
+The file below runs a bridge for joint states and pose, together with a standard clock bridge.
+We assume the corresponding plugins do exist in the robot description.
+
+```
+from simple_launch import SimpleLauncher, IgnitionBridge
+
+def generate_launch_description():
+    
+    sl = SimpleLauncher()
+    
+    # namespace is a launch argument, not a Python string
+    sl.declare_arg('robot', default_value = 'turtlebot')
+    robot = sl.arg('robot')
+    
+    with sl.group(ns = robot):
+        # assume some robot_state_publisher publishes the robot_description
+    
+        # spawn in Ignition at default pose if not already here
+        # used IgnitionBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
+        sl.spawn_ign_model(robot)
+
+        # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state
+        # note the relative ROS topic 'joint_states' that is actually namespaced     
+        ign_js_topic = sl.name_join(IgnitionBridge.model_prefix(robot), '/joint_state')
+        js_bridge = IgnitionBridge(ign_js_topic, 'joint_states', 'sensor_msgs/JointState', IgnitionBridge.ign2ros)        
+
+        # pose publisher bridge @ /model/<robot>
+        pose_bridge = IgnitionBridge(sl.name_join('/model/', robot, '/pose'),
+                                        'pose_gt', 'geometry_msgs/Pose', IgnitionBridge.ign2ros)
+
+        # create bridge, also add standard /clock topic
+        sl.create_ign_bridge([IgnitionBridge.clock(), js_bridge, pose_bridge], 'ign_bridge')
+    
+    return sl.launch_description()
+
 ```

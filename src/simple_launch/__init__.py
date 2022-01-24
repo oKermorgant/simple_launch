@@ -28,8 +28,9 @@ def adapt_type(params, target):
     if type(params) == dict:        
         if target == NODE_PARAMS:
             return [params]
-        else:            
-            return params.items()
+        else:        
+            # launch arguments do not support raw Booleans
+            return [(key, str(val) if type(val) == bool else val) for key, val in params.items()]
         
     if type(params) in (list, tuple):
                 
@@ -41,8 +42,101 @@ def adapt_type(params, target):
             # (key, val) pairs
             return adapt_type(dict(params), target)    
     
-    print('Could not get the passed type of arguments:', params)
     return params
+
+class IgnitionBridge:
+    ign2ros = '['
+    ros2ign = ']'
+    bidirectional = '@'
+    models = None
+    
+    @staticmethod
+    def read_models():
+        if IgnitionBridge.models is not None:
+            return
+        from subprocess import check_output
+        models = check_output(['ign','model','--list']).decode().splitlines()
+        IgnitionBridge.models = [line.strip('- ') for line in models]
+    
+    def __init__(self, ign_topic, ros_topic, msg, direction):
+        '''
+        Create a bridge instance to be passed to SimpleLauncher.create_ign_bridge        
+        '''
+        
+        # find corresponding ign message 
+        # from https://github.com/ignitionrobotics/ros_ign/blob/foxy/ros_ign_bridge/README.md
+        msg_map = {'std_msgs/msg/Bool': 'ignition.msgs.Boolean',
+ 'std_msgs/msg/Empty': 'ignition.msgs.Empty',
+ 'std_msgs/msg/Float32': 'ignition.msgs.Float',
+ 'std_msgs/msg/Float64': 'ignition.msgs.Double',
+ 'std_msgs/msg/Header': 'ignition.msgs.Header',
+ 'std_msgs/msg/Int32': 'ignition.msgs.Int32',
+ 'std_msgs/msg/String': 'ignition.msgs.StringMsg',
+ 'geometry_msgs/msg/Quaternion': 'ignition.msgs.Quaternion',
+ 'geometry_msgs/msg/Vector3': 'ignition.msgs.Vector3d',
+ 'geometry_msgs/msg/Point': 'ignition.msgs.Vector3d',
+ 'geometry_msgs/msg/Pose': 'ignition.msgs.Pose',
+ 'geometry_msgs/msg/PoseStamped': 'ignition.msgs.Pose',
+ 'geometry_msgs/msg/Transform': 'ignition.msgs.Pose',
+ 'geometry_msgs/msg/TransformStamped': 'ignition.msgs.Pose',
+ 'geometry_msgs/msg/Twist': 'ignition.msgs.Twist',
+ 'nav_msgs/msg/Odometry': 'ignition.msgs.Odometry',
+ 'rosgraph_msgs/msg/Clock': 'ignition.msgs.Clock',
+ 'sensor_msgs/msg/BatteryState': 'ignition.msgs.BatteryState',
+ 'sensor_msgs/msg/CameraInfo': 'ignition.msgs.CameraInfo',
+ 'sensor_msgs/msg/FluidPressure': 'ignition.msgs.FluidPressure',
+ 'sensor_msgs/msg/Imu': 'ignition.msgs.IMU',
+ 'sensor_msgs/msg/Image': 'ignition.msgs.Image',
+ 'sensor_msgs/msg/JointState': 'ignition.msgs.Model',
+ 'sensor_msgs/msg/LaserScan': 'ignition.msgs.LaserScan',
+ 'sensor_msgs/msg/MagneticField': 'ignition.msgs.Magnetometer',
+ 'sensor_msgs/msg/PointCloud2': 'ignition.msgs.PointCloudPacked',
+ 'tf2_msgs/msg/TFMessage': 'ignition.msgs.Pose_V',
+ 'trajectory_msgs/msg/JointTrajectory': 'ignition.msgs.JointTrajectory'}
+        
+        if '/msg/' not in msg:
+            msg = msg.replace('/', '/msg/')
+            
+        if msg not in msg_map:
+            print(f'Cannot build a ros <-> ign bridge for message "{msg}": unknown type')
+            return
+        
+        if not IgnitionBridge.valid(direction):
+            print(f'Cannot build ros <-> ign bridge with direction "{direction}": should be in {{[,],@}}')
+            return
+                        
+        # ros2 run ros_ign_bridge parameter_bridge /chatter@std_msgs/msg/String@ignition.msgs.StringMsg
+        # auto-detect relative or absolute topic
+        ign_abs_topic = ign_topic
+                        
+        if not( isinstance(ign_topic, str) and ign_topic.startswith('/') ):
+            ign_abs_topic = SimpleLauncher.name_join(IgnitionBridge.model_prefix(ign_topic))
+        
+        self.tag = SimpleLauncher.name_join(ign_topic,'@',msg,direction,msg_map[msg])
+        self.remapping = SimpleLauncher.name_join(ign_topic,':=', ros_topic)        
+    
+    @staticmethod
+    def valid(direction):
+        return direction in (IgnitionBridge.ign2ros, IgnitionBridge.ros2ign, IgnitionBridge.bidirectional)    
+    
+    @staticmethod
+    def world():
+        IgnitionBridge.read_models()
+        return IgnitionBridge.models[1].replace(']', '[').split('[')[1]
+    
+    @staticmethod
+    def model_prefix(model):
+        return SimpleLauncher.name_join(f"/world/{IgnitionBridge.world()}/model/",
+                            model)
+        
+    @staticmethod
+    def clock():
+        return IgnitionBridge('/clock', '/clock', 'rosgraph_msgs/msg/Clock', IgnitionBridge.ign2ros)
+    
+    @staticmethod
+    def has_model(model):
+        IgnitionBridge.read_models()
+        return SimpleLauncher.py_eval("'", model, "' in ", str(IgnitionBridge.models))
 
 class SimpleLauncher:
     def __init__(self, namespace = ''):
@@ -53,9 +147,27 @@ class SimpleLauncher:
         self.index = 0
         self.ns_graph = {0: -1}
         self.composed = False
+        self.sim_time = None
         
         if namespace:
             self.entity(PushRosNamespace(namespace))
+            
+    def auto_sim_time(self):
+        '''
+        Checks if /clock is being published
+        If True then will set use_sim_time for all nodes
+        '''
+        self.sim_time = False
+        from subprocess import check_output
+        try:
+            clock = check_output(['ros2', 'topic', 'info', '/clock']).decode().splitlines()
+            for line in clock:
+                if line.startswith('Publisher count'):
+                    self.sim_time = int(line.split()[-1]) > 0
+                    break
+        except:
+            pass
+        return self.sim_time
         
     def declare_arg(self, name, default_value = None, description = None):
         '''
@@ -180,6 +292,8 @@ class SimpleLauncher:
         self.index = self.ns_graph[self.index]
         return new_entities
     
+    '''
+    # unused as of now
     def abs_node_ns(self, node_args = {}):
         
         ns = []
@@ -194,13 +308,15 @@ class SimpleLauncher:
                     ns.insert(0, head.namespace)
             index = self.ns_graph[index]
         return self.name_join(["'"], self.path_join(*ns), ["'"])
-       
+    '''
+    
     @contextmanager
-    def group(self, ns=None, if_arg=None, unless_arg=None):
+    def group(self, ns=None, if_arg=None, unless_arg=None, if_condition=None, unless_condition=None):
         '''
         Group the next nodes / entities into
          - another namespace
          - a if / unless condition depending on some argument
+         - a raw if / unless condition that may come out of an expression
         '''
         self.group_level_down()
         
@@ -219,6 +335,10 @@ class SimpleLauncher:
                 condition = IfCondition(self.arg(if_arg))
             elif unless_arg is not None:
                 condition = UnlessCondition(self.arg(unless_arg))
+            elif if_condition is not None:
+                condition = IfCondition(if_condition)
+            elif unless_condition is not None:
+                condition = UnlessCondition(unless_condition)
             # add new entities as sub-group
             self.entity(GroupAction(new_entities, condition=condition))
             
@@ -265,7 +385,7 @@ class SimpleLauncher:
             
     def node(self, package, executable = None, plugin = None, **node_args):
         '''
-        Add a node to the launch tree.
+        Add a node to the launch tree. If auto_sim_time was used then the use_sim_time parameter will be set if not explicitely given
         
         * package -- name of the package
         * executable (classical node) -- name of the node within the package, if None then assumes the node has the name of the package
@@ -280,6 +400,13 @@ class SimpleLauncher:
         for key,target in (('parameters',NODE_PARAMS),('remappings',NODE_REMAPS)):
             if key in node_args:
                 node_args[key] = adapt_type(node_args[key], target)
+        
+        if self.sim_time is not None:
+            if 'parameters' in node_args:
+                if 'use_sim_time' not in node_args['parameters'][0]:
+                    node_args['parameters'][0]['use_sim_time'] = self.sim_time
+            else:
+                node_args['parameters'] = [{'use_sim_time':  self.sim_time}]
                 
         if not self.composed:
             self.entity(Node(package=package, executable=executable, **node_args))
@@ -382,5 +509,33 @@ class SimpleLauncher:
             use_gui = str(use_gui)
             
         self.node('joint_state_publisher', parameters = node_args, condition=UnlessCondition(use_gui))
-        self.node('joint_state_publisher_gui', parameters = node_args, condition=IfCondition(use_gui))
+        self.node('joint_state_publisher_gui', parameters = node_args, condition=IfCondition(use_gui))        
         
+    def create_ign_bridge(self, bridges, name = None):
+        '''
+        Create a ros_ign_bridge::parameter_bridge with the passed IgnitionBridge instances
+        The bridge has a default name if not specified        
+        '''
+        if type(bridges) not in (list, tuple):
+            bridges = [bridges]
+        bridge_args = []
+        remappings = []
+        for bridge in bridges:
+            if bridge is not None:
+                bridge_args.append(bridge.tag)
+                remappings += ['-r',bridge.remapping]
+                                
+        self.node('ros_ign_bridge','parameter_bridge', name=name, 
+                  arguments=bridge_args + ['--ros-args'] + remappings,
+                  parameters = {'args': bridge_args})
+
+    def spawn_ign_model(self, name, topic = 'robot_description', spawn_args = []):
+        '''
+        Spawns a model into Ignition under the given name, from the given topic
+        Additional spawn_args can be given to specify e.g. the initial pose
+        '''
+        spawn_args += ['-topic',topic,'-name', name, '-world', IgnitionBridge.world()]
+        
+        # spawn if not already there
+        with self.group(unless_condition = IgnitionBridge.has_model(name)):
+            self.node('ros_ign_gazebo','create', arguments=spawn_args)

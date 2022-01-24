@@ -25,8 +25,8 @@ def generate_launch_description():
             
         with sl.group(unless_arg='use_xacro_prefixing'):
             # or prefix with robot_state_publisher
-            # gz_plugins=True will also prefix Gazebo-published link names and namespace Gazebo-published topics (none for this robot)
-            sl.robot_state_publisher('simple_launch', 'turret.xacro', parameters={'frame_prefix': sl.arg('prefix')}, gz_plugins=True)            
+            # prefix_gz_plugins=True will also prefix Gazebo-published link names and namespace Gazebo-published topics (none for this robot)
+            sl.robot_state_publisher('simple_launch', 'turret.xacro', parameters={'frame_prefix': sl.arg('prefix')},prefix_gz_plugins=True)            
             
         sl.joint_state_publisher(sources_list = ['source_joints'], use_gui = sl.arg('use_gui'))
         
