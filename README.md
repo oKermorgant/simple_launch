@@ -90,28 +90,31 @@ This syntax adds the `composition/composition::Talker` as a ComposableNode
 
 ## Simulation and `use_sim_time`
 
-Calling `sl.auto_sim_time()` will detect (and return) if the `/clock` topic is advertized. (typically by a simulator).
+Calling `sl.auto_sim_time(force = None)` will detect (and return) if the `/clock` topic is advertized (typically by a simulator).
 If this is the case then all subsequent nodes will be run with `use_sim_time:=True`, unless this parameter is explicitely given.
+
+If a Boolean (or Boolean launch argument) is given to `sl.auto_sim_time` then `/clock` will not be checked and the corresponding argument will be forwarded to all nodes. This can be useful when the simulator itself in run through the launch file, to avoid race conditions as `/clock` will not be advertized at the time of the launch.
+
 
 ### Spawn a model
 
 The `sl.spawn_ign_model(name, topic, spawn_args = [])` functions allows easily spawing a model from its `robot_description`:
 
 - `name` is the name this model will get in Ignition
-- `topic` is the topic to obtain the model from, default is `robot_description`
+- `topic` is the topic to obtain the model from, default is `robot_description` (relative to the current namespace)
 - `spawn_args` are any additional spawn arguments, e.g. the initial pose
 
 ### Ignition world
 
-The `IgnitionBridge` class has a few static methods to interact with a running ignition. Namely:
+The `IgnitionBridge` class has a few static methods to interact with a **running Ignition**. Namely:
 
 - `IgnitionBridge.world()` returns the current world name
-- `IgnitionBridge.model_prefix(model)` builds the Ignition topic relative to the given model `/world/<world>/model`
-- `IgnitionBridge.has_model(model)` returns `True` of `False` depending on the passed model being in Ignition
+- `IgnitionBridge.model_prefix(model)` builds the Ignition topic relative to the given model `/world/<world>/model/<model>`
+- `IgnitionBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Ignition already
 
 ### Ignition bridge
 
-The `IgnitionBridge` class allows easily creating bridges when running Ignition.
+The `IgnitionBridge` class allows easily creating bridges when using Ignition. Ignition has to be already running in order to get information on the simulation scene.
 
 An instance is created with: `bridge = IgnitionBridge(<ignition_topic>, <ros_topic>, <ros_message>, direction)` where `direction` is either:
 
@@ -260,6 +263,32 @@ def generate_launch_description():
     return sl.launch_description()
 ```
 
+### auto sim time
+
+Here we run Ignition and force all other nodes to `use_sim_time:=True`:
+
+```
+from simple_launch import SimpleLauncher, IgnitionBridge
+
+def generate_launch_description():
+    
+    sl = SimpleLauncher()
+    
+    sl.declare_arg('use_sim_time', default_value=True)
+    
+    # now all nodes in this launch file will use_sim_time:=True
+    sl.auto_sim_time(sl.arg('use_sim_time'))
+    
+    # run Ignition Gazebo + clock bridge 
+    sl.include('ros_ign_gazebo','ign_gazebo.launch.py',launch_arguments={'''some sdf world'''}})
+    sl.create_ign_bridge(IgnitionBridge.clock(), 'ign_clock')
+    
+    # run other nodes with sim time
+    
+    return sl.launch_description()
+    
+```
+
 ### Ignition bridge
 
 The file below runs a bridge for joint states and pose, together with a standard clock bridge.
@@ -280,7 +309,7 @@ def generate_launch_description():
         # assume some robot_state_publisher publishes the robot_description
     
         # spawn in Ignition at default pose if not already here
-        # used IgnitionBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
+        # uses IgnitionBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
         sl.spawn_ign_model(robot)
 
         # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state

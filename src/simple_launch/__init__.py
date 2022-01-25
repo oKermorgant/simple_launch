@@ -7,6 +7,7 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node, PushRosNamespace, ComposableNodeContainer, LoadComposableNodes
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
+from launch.actions import OpaqueFunction
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, TextSubstitution, PythonExpression
 from launch.conditions import IfCondition, UnlessCondition
@@ -152,21 +153,25 @@ class SimpleLauncher:
         if namespace:
             self.entity(PushRosNamespace(namespace))
             
-    def auto_sim_time(self):
+    def auto_sim_time(self, force = None):
         '''
-        Checks if /clock is being published
-        If True then will set use_sim_time for all nodes
+        Force use_sim_time for all nodes.
+        If force is None then checks if /clock is being published and sets use_sim_time if this is the case
         '''
-        self.sim_time = False
-        from subprocess import check_output
-        try:
-            clock = check_output(['ros2', 'topic', 'info', '/clock']).decode().splitlines()
-            for line in clock:
-                if line.startswith('Publisher count'):
-                    self.sim_time = int(line.split()[-1]) > 0
-                    break
-        except:
-            pass
+        if force is None:
+            self.sim_time = False
+            from subprocess import check_output
+            try:
+                clock = check_output(['ros2', 'topic', 'info', '/clock']).decode().splitlines()
+                for line in clock:
+                    if line.startswith('Publisher count'):
+                        self.sim_time = int(line.split()[-1]) > 0
+                        break
+            except:
+                pass
+        else:
+            self.sim_time = force
+            
         return self.sim_time
         
     def declare_arg(self, name, default_value = None, description = None):
