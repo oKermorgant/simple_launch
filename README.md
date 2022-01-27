@@ -11,7 +11,12 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 ### Namespace and argument parser initialization
 
-`sl = SimpleLauncher(namespace)`
+`sl = SimpleLauncher(namespace = '', use_sim_time = None)`
+
+- will initialize all nodes relative to the given namespace
+- if `use_sim_time` is a Boolean, creates a `use_sim_time` launch argument with this value as the default and forwards it to all nodes, unless explicitely specified when running the node
+- if `use_sim_time` is `'auto'`, then `SimpleLauncher` will set it to `True` if the `/clock` topic is advertized (case of an already running simulation). **This may have side effects if the `/clock` topic is advertized but you want to use this launch file with system clock**.
+- if `use_sim_time` is `None` (default) then no particular value is forwarded to the nodes
 
 ### Node registration
 
@@ -37,8 +42,9 @@ In the launch API, differents types are expected for:
 - node parameters: a list of dictionaries
 - node remappings: a list of (`key`, `value`) pairs
 - included launch arguments: a list of (`key`, `value`) pairs
+- xacro arguments: a concatenation of `key:=value` strings
 
-The `sl.include` and `sl.node` syntax allow using any type (the simplest being a single dictionary)  and will convert to the one expected by the API.
+The `sl.include`, `sl.node` and `xacro_args` calls allow using any type (the simplest being a single dictionary)  and will convert to the one expected by the API.
 
 ## Launch arguments
 
@@ -67,6 +73,16 @@ Groups are created through the `sl.with()` syntax and accepts both a namespace a
     sl.node(package, executable)
 ```
 
+### From a condition
+
+```
+  with sl.group(if_condition=True):
+    sl.node(package, executable)
+    
+  with sl.group(unless_condition=<some expression>):
+    sl.node(package, executable)
+```
+
 ### From conditional arguments
 
 ```
@@ -77,7 +93,13 @@ Groups are created through the `sl.with()` syntax and accepts both a namespace a
     sl.node(package, executable)
 ```
 
-If `if_arg` / `unless_arg` is a string then the corresponding launch argument is used. Otherwise the raw value is passed as a condition (Boolean / Substitution).
+`if_arg` / `unless_arg` is expected to be the name of a launch argument. These two lines are equivalent:
+
+```
+  with sl.group(if_arg='use_gui'):  
+  with sl.group(if_condition=sl.arg('use_gui'):
+```
+If `if_arg` / `unless_arg` is not a string then it is considered as a `if_condition` / `unless_condition`.
 
 ### Creating containers
 
@@ -90,10 +112,26 @@ This syntax adds the `composition/composition::Talker` as a ComposableNode
 
 ## Simulation and `use_sim_time`
 
-Calling `sl.auto_sim_time(force = None)` will detect (and return) if the `/clock` topic is advertized (typically by a simulator).
-If this is the case then all subsequent nodes will be run with `use_sim_time:=True`, unless this parameter is explicitely given.
+Instanciating `sl = SimpleLauncher(use_sim_time = True)` is equivalent to:
 
-If a Boolean (or Boolean launch argument) is given to `sl.auto_sim_time` then `/clock` will not be checked and the corresponding argument will be forwarded to all nodes. This can be useful when the simulator itself in run through the launch file, to avoid race conditions as `/clock` will not be advertized at the time of the launch.
+```
+    sl = SimpleLauncher()
+    sl.declare_arg('use_sim_time', True)
+    sl.auto_sim_time(force = sl.arg('use_sim_time'))
+```
+
+The `use_sim_time` parameter will be forwarded to all nodes launched by this `SimpleLauncher` instance.
+This allows having a default `use_sim_time` value in the launch file, yet being able to have it changed through the `use_sim_time` launch argument if this file is included by another.
+
+Instanciating `sl = SimpleLauncher(use_sim_time = 'auto')` forces the instance to check if the `/clock` topic is advertized (typically by a simulator) and forward the suitable `use_sim_time` parameter to all its node. No launch argument will be declared in this case.
+
+The current `use_sim_time` setting can be retrieved through `sl.sim_time` that may be:
+
+- `None`, if `use_sim_time` was not set in the `SimpleLauncher` constructor
+- a raw Boolean, if `use_sim_time` was set to `'auto'`, depending on the `/clock` topic being advertized
+- a Boolean launch argument, if `use_sim_time` was set to `True` or `False`
+
+In all cases, if the `use_sim_time` parameter is explicitely given to a node, it will be used instead of the `SimpleLauncher` instance one. 
 
 
 ### Spawn a model
@@ -235,7 +273,7 @@ def generate_launch_description():
         
     with sl.group(if_arg='robot2'):
         with sl.group(unless_arg='no_robot2'):
-            args = [('prefix', 'robot2'), ('x', sl.arg('robot2_x')), ('y', sl.arg('robot2_y'))]
+            args = {'prefix': 'robot2', 'x': sl.arg('robot2_x'), 'y': sl.arg('robot2_y')}
             sl.include('simple_launch', 'included_launch.py', launch_arguments=args)
             
     with sl.group(if_arg='rviz'):
@@ -265,19 +303,16 @@ def generate_launch_description():
 
 ### auto sim time
 
-Here we run Ignition and force all other nodes to `use_sim_time:=True`:
+Here we run Ignition and force all other nodes to `use_sim_time:=True`, unless this file is included from another one with `use_sim_time:=False`.
+This is unlikely as this launch file spawns a simulator.
 
 ```
 from simple_launch import SimpleLauncher, IgnitionBridge
 
 def generate_launch_description():
-    
-    sl = SimpleLauncher()
-    
-    sl.declare_arg('use_sim_time', default_value=True)
-    
-    # now all nodes in this launch file will use_sim_time:=True
-    sl.auto_sim_time(sl.arg('use_sim_time'))
+
+    # all nodes in this launch file will use_sim_time:=True
+    sl = SimpleLauncher(use_sim_time=True)      
     
     # run Ignition Gazebo + clock bridge 
     sl.include('ros_ign_gazebo','ign_gazebo.launch.py',launch_arguments={'''some sdf world'''}})
@@ -289,40 +324,44 @@ def generate_launch_description():
     
 ```
 
-### Ignition bridge
+### Robot description and conditionnal Ignition bridge
 
-The file below runs a bridge for joint states and pose, together with a standard clock bridge.
-We assume the corresponding plugins do exist in the robot description.
+The file below only runs by default a `robot_state_publisher` with `use_sim_time=False`.
+However, if it is included from another file with `use_sim_time:=True` then it also spawns the robot into Ignition and run two bridges for joint states and pose.
 
 ```
 from simple_launch import SimpleLauncher, IgnitionBridge
 
 def generate_launch_description():
     
-    sl = SimpleLauncher()
+    sl = SimpleLauncher(use_sim_time=False)
     
     # namespace is a launch argument, not a Python string
-    sl.declare_arg('robot', default_value = 'turtlebot')
+    sl.declare_arg('robot', default_value = 'robot1')
     robot = sl.arg('robot')
     
     with sl.group(ns = robot):
-        # assume some robot_state_publisher publishes the robot_description
+        # robot_state_publisher is always run
+        sl.robot_state_publisher('my_description', 'my_robot.xacro')
+        
+        with sl.group(if_condition = sl.sim_time):
+            # only execute this group if use_sim_time was set to True
     
-        # spawn in Ignition at default pose if not already here
-        # uses IgnitionBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
-        sl.spawn_ign_model(robot)
+            # spawn in Ignition at default pose if not already here
+            # uses IgnitionBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
+            sl.spawn_ign_model(robot)
 
-        # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state
-        # note the relative ROS topic 'joint_states' that is actually namespaced     
-        ign_js_topic = sl.name_join(IgnitionBridge.model_prefix(robot), '/joint_state')
-        js_bridge = IgnitionBridge(ign_js_topic, 'joint_states', 'sensor_msgs/JointState', IgnitionBridge.ign2ros)        
+            # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state
+            # note the relative ROS topic 'joint_states' that is actually namespaced     
+            ign_js_topic = sl.name_join(IgnitionBridge.model_prefix(robot), '/joint_state')
+            js_bridge = IgnitionBridge(ign_js_topic, 'joint_states', 'sensor_msgs/JointState', IgnitionBridge.ign2ros)        
 
-        # pose publisher bridge @ /model/<robot>
-        pose_bridge = IgnitionBridge(sl.name_join('/model/', robot, '/pose'),
-                                        'pose_gt', 'geometry_msgs/Pose', IgnitionBridge.ign2ros)
+            # pose publisher bridge @ /model/<robot>
+            pose_bridge = IgnitionBridge(sl.name_join('/model/', robot, '/pose'),
+                                            'pose_gt', 'geometry_msgs/Pose', IgnitionBridge.ign2ros)
 
-        # create bridge, also add standard /clock topic
-        sl.create_ign_bridge([IgnitionBridge.clock(), js_bridge, pose_bridge], 'ign_bridge')
+            # create bridge node with these two topics
+            sl.create_ign_bridge([js_bridge, pose_bridge], 'ign_bridge')
     
     return sl.launch_description()
 

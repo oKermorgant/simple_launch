@@ -4,7 +4,7 @@ from imp import load_source
 
 from ros2run.api import get_executable_path
 from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
+from launch import LaunchDescription, Substitution
 from launch_ros.actions import Node, PushRosNamespace, ComposableNodeContainer, LoadComposableNodes
 from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription
 from launch.actions import OpaqueFunction
@@ -20,18 +20,34 @@ def regular_path_elem(path):
 
 NODE_REMAPS = LAUNCH_ARGS = 1
 NODE_PARAMS = 2
+XACRO_ARGS = 3
 
 def adapt_type(params, target):
     # detect type of passed params and adapts to launch API
     # NODE_PARAMS expects a list with 1 or several dict
     # NODE_REMAPS and LAUNCH_ARGS expect a list of (key,value) tuples
+    # XACRO_ARGS 
     
     if type(params) == dict:        
         if target == NODE_PARAMS:
             return [params]
-        else:        
+        elif target in (NODE_REMAPS, LAUNCH_ARGS):        
             # launch arguments do not support raw Booleans
-            return [(key, str(val) if type(val) == bool else val) for key, val in params.items()]
+            return [(key, str(val) if isinstance(val, bool) else val) for key, val in params.items()]
+        else:
+            # xacro arguments are key:=value / only str or Substitution
+            if type(params) == str:
+                # user has passed raw args
+                return [' ', params]
+            else:
+                # args as a dict
+                out = []
+                for key, val in params.items():
+                    out += [' ', key]
+                    if val is not None:
+                        out += [':=', val]
+                return [arg if isinstance(arg, str) or isinstance(arg, Substitution) else str(arg)
+                       for arg in SimpleLauncher.flatten(out)]
         
     if type(params) in (list, tuple):
                 
@@ -45,6 +61,26 @@ def adapt_type(params, target):
     
     return params
 
+def only_show_args():
+    '''
+    Returns True if the launch file was launch only to show its arguments
+    '''
+    return any(show_arg in sys.argv for show_arg in ('-s', '--show-args', '--show-arguments'))
+
+def silent_exec(cmd):
+    '''
+    Executes the given command and returns the output
+    Returns an empty list if any error
+    '''
+    from subprocess import check_output, STDOUT
+    if isinstance(cmd, str):
+        from shlex import split
+        cmd = split(cmd)
+    try:
+        return check_output(cmd, stderr=STDOUT).decode().splitlines()
+    except:
+        return []    
+
 class IgnitionBridge:
     ign2ros = '['
     ros2ign = ']'
@@ -55,10 +91,19 @@ class IgnitionBridge:
     def read_models():
         if IgnitionBridge.models is not None:
             return
-        from subprocess import check_output
-        models = check_output(['ign','model','--list']).decode().splitlines()
-        IgnitionBridge.models = [line.strip('- ') for line in models]
-    
+        if only_show_args():
+            # set a dummy world model, we are not runnign anyway
+            IgnitionBridge.models = ['','world [default]']
+            print('\033[93mThis launch file will request information on a running Ignition instance at the time of the launch\033[0m')
+            return
+            
+        models = silent_exec('ign model --list')
+        if any(line.startswith('Requesting') for line in models):
+            IgnitionBridge.models = [line.strip('- ') for line in models]
+            print('\033[92mIgnitionBridge: connected to a running Ignition instance\033[0m')
+        else:
+            print('\033[91mIgnitionBridge: could not find any Ignition instance, launch will probably fail\033[0m')
+        
     def __init__(self, ign_topic, ros_topic, msg, direction):
         '''
         Create a bridge instance to be passed to SimpleLauncher.create_ign_bridge        
@@ -140,39 +185,55 @@ class IgnitionBridge:
         return SimpleLauncher.py_eval("'", model, "' in ", str(IgnitionBridge.models))
 
 class SimpleLauncher:
-    def __init__(self, namespace = ''):
+    def __init__(self, namespace = '', use_sim_time = None):
         '''
         Initializes entities in the given workspace
+        If use_sim_time is True or False, creates a `use_sim_time` launch argument with this value as the default and forwards it to all nodes
+        If use_sim_time is 'auto', then SimpleLauncher will set it to True if the /clock topic is advertized (case of an already running simulation)
         '''
         self.entities = [[]]
         self.index = 0
         self.ns_graph = {0: -1}
-        self.composed = False
+        self.composed = False        
         self.sim_time = None
         
         if namespace:
             self.entity(PushRosNamespace(namespace))
+        
+        if use_sim_time is None:
+            return
+        
+        # deal with use_sim_time
+        if isinstance(use_sim_time, bool):
+            self.declare_arg('use_sim_time', use_sim_time,
+                             'Force use_sim_time parameter of instanciated nodes')
+            self.auto_sim_time(self.arg('use_sim_time'))
+        elif use_sim_time != 'auto':
+            raise("\033[93mSimpleLauncher: `use_sim_time` should be None, a Boolean, or 'auto' to rely on the /clock topic\033[0m")
+        elif only_show_args():
+            print('\033[93mThis launch file will forward use_sim_time to all nodes if /clock is advertized at the time of the launch\033[0m')
+            return
+        else:
+            self.auto_sim_time()
             
     def auto_sim_time(self, force = None):
         '''
-        Force use_sim_time for all nodes.
+        Forces use_sim_time for all nodes.
         If force is None then checks if /clock is being published and sets use_sim_time if this is the case
         '''
         if force is None:
             self.sim_time = False
-            from subprocess import check_output
-            try:
-                clock = check_output(['ros2', 'topic', 'info', '/clock']).decode().splitlines()
-                for line in clock:
-                    if line.startswith('Publisher count'):
-                        self.sim_time = int(line.split()[-1]) > 0
-                        break
-            except:
-                pass
+            clock_info = silent_exec('ros2 topic info /clock')
+            for line in clock_info:
+                if line.startswith('Publisher count'):
+                    self.sim_time = int(line.split()[-1]) > 0
+                    break
+            if self.sim_time:
+                print("\033[92mSimpleLauncher(use_sim_time='auto'): found a /clock topic, forwarding use_sim_time:=True to all nodes\033[0m")
+            else:
+                print("\033[92mSimpleLauncher(use_sim_time='auto'): no /clock topic found, forwarding use_sim_time:=False to all nodes\033[0m")
         else:
             self.sim_time = force
-            
-        return self.sim_time
         
     def declare_arg(self, name, default_value = None, description = None):
         '''
@@ -218,7 +279,7 @@ class SimpleLauncher:
         '''
         Take a list with possibly sub-(sub-(...))-lists elements and make it to a 1-dim list
         '''
-        return sum([SimpleLauncher.flatten(elem) if type(elem)==list else [elem] for elem in nested],[])        
+        return sum([SimpleLauncher.flatten(elem) if type(elem)==list else [elem] for elem in nested],[])
     
     @staticmethod
     def py_eval(*elems):
@@ -447,16 +508,8 @@ class SimpleLauncher:
             cmd = ['xacro ' + description_file]
         else:
             cmd = ['xacro '] + description_file
-        if xacro_args is not None:            
-            if type(xacro_args) == str:
-                # user has passed raw args
-                cmd.append(' ' + xacro_args)
-            else:
-                # args as a dict
-                for key, val in xacro_args.items():
-                    cmd += [' ', key]
-                    if val is not None:
-                        cmd += self.flatten([':=',val])
+        if xacro_args is not None:  
+            cmd += adapt_type(xacro_args, XACRO_ARGS)
         return self.name_join("'",Command(SimpleLauncher.name_join(*cmd)),"'")
         
     def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False, namespaced_tf = False, **node_args):
