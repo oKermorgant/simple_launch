@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.3.0 (2022-02-03)
+------------------
 * more use_sim_time: constructor + warning on 'auto'
 * auto_sim_time can be forced instead of checking /clock
 * Contributors: Olivier Kermorgant
