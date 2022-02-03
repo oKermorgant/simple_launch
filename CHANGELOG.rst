@@ -2,6 +2,12 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* more use_sim_time: constructor + warning on 'auto'
+* auto_sim_time can be forced instead of checking /clock
+* Contributors: Olivier Kermorgant
+
 1.2.1 (2022-01-24)
 ------------------
 * add Ignition support
