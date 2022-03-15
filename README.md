@@ -110,6 +110,12 @@ This syntax adds the `composition/composition::Talker` as a ComposableNode
     sl.node(package='composition', plugin='Talker', name='talker')
 ```
 
+Use the `executable` parameter if you want to use executors other than `component_container`:
+
+```
+  with sl.container(name='my_container', output='screen', executable='component_container_isolated'):
+```
+
 ## Simulation and `use_sim_time`
 
 Instanciating `sl = SimpleLauncher(use_sim_time = True)` is equivalent to:

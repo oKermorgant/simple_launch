@@ -410,7 +410,7 @@ class SimpleLauncher:
             
             
     @contextmanager
-    def container(self, name, namespace = '', existing = False, **container_args):
+    def container(self, name, namespace = '', existing = False, package='rclcpp_components', executable='component_container', **container_args):
         '''
         Opens a Composition group to add nodes
         If existing is True, then loads nodes in the (supposely) existing container
@@ -437,8 +437,8 @@ class SimpleLauncher:
                 ComposableNodeContainer(
                 name=name,
                 namespace=namespace,
-                package='rclcpp_components',
-                executable='component_container',
+                package=package,
+                executable=executable,
                 composable_node_descriptions=new_entities,
                 **container_args))
                 
