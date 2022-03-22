@@ -110,7 +110,7 @@ This syntax adds the `composition/composition::Talker` as a ComposableNode
     sl.node(package='composition', plugin='Talker', name='talker')
 ```
 
-Use the `executable` parameter if you want to use executors other than `component_container`:
+Use the `executable` and `package` parameters if you want to use executors other than `rclcpp_components`'s `component_container`:
 
 ```
   with sl.container(name='my_container', output='screen', executable='component_container_isolated'):
