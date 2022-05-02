@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.3.1 (2022-05-02)
+------------------
 * use underscores in setup.cfg
 * typo in included_launch example
 * Merge pull request `#4 <https://github.com/oKermorgant/simple_launch/issues/4>`_ from yushijinhun/patch-1
