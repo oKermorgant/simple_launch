@@ -21,7 +21,6 @@ def generate_launch_description():
         with sl.group(if_arg='use_xacro_prefixing'):
             # prefix with xacro, ok if the xacro file was written with prefix in mind
             sl.robot_state_publisher('simple_launch', 'turret.xacro', xacro_args = xacro_args)
-            sl.abs_node_ns()
             
         with sl.group(unless_arg='use_xacro_prefixing'):
             # or prefix with robot_state_publisher

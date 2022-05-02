@@ -159,7 +159,7 @@ class IgnitionBridge:
             ign_abs_topic = SimpleLauncher.name_join(IgnitionBridge.model_prefix(ign_topic))
         
         self.tag = SimpleLauncher.name_join(ign_topic,'@',msg,direction,msg_map[msg])
-        self.remapping = SimpleLauncher.name_join(ign_topic,':=', ros_topic)        
+        self.remapping = SimpleLauncher.name_join(ign_topic,':=', ros_topic)
     
     @staticmethod
     def valid(direction):
@@ -587,13 +587,16 @@ class SimpleLauncher:
                   arguments=bridge_args + ['--ros-args'] + remappings,
                   parameters = {'args': bridge_args})
 
-    def spawn_ign_model(self, name, topic = 'robot_description', spawn_args = []):
+    def spawn_ign_model(self, name, topic = 'robot_description', spawn_args = [], only_new = True):
         '''
         Spawns a model into Ignition under the given name, from the given topic
         Additional spawn_args can be given to specify e.g. the initial pose
         '''
-        spawn_args += ['-topic',topic,'-name', name, '-world', IgnitionBridge.world()]
+        spawn_args += ['-topic',topic,'-name', name]
         
         # spawn if not already there
-        with self.group(unless_condition = IgnitionBridge.has_model(name)):
+        if only_new:
+            with self.group(unless_condition = IgnitionBridge.has_model(name)):
+                self.node('ros_ign_gazebo','create', arguments=spawn_args)
+        else:
             self.node('ros_ign_gazebo','create', arguments=spawn_args)
