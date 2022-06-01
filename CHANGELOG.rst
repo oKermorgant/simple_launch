@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.1 (2022-06-01)
+------------------
 * more handling of param types
 * Contributors: Olivier Kermorgant
 
