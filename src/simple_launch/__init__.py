@@ -29,7 +29,9 @@ def adapt_type(params, target):
     # XACRO_ARGS expect a single string of key:=value
     
     def stringify(arg):
-        return arg if isinstance(arg, str) or isinstance(arg, Substitution) else str(arg)
+        if any(isinstance(arg, ok_type) for ok_type in (str, Substitution, list)):
+            return arg
+        return str(arg)
     
     if type(params) == dict:        
         if target == NODE_PARAMS:
