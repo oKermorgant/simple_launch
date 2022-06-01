@@ -2,6 +2,12 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* use Gazebo instead of Ignition
+* better type comprehension
+* Contributors: Olivier Kermorgant
+
 1.3.1 (2022-05-02)
 ------------------
 * use underscores in setup.cfg
