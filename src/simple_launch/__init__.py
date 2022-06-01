@@ -26,28 +26,25 @@ def adapt_type(params, target):
     # detect type of passed params and adapts to launch API
     # NODE_PARAMS expects a list with 1 or several dict
     # NODE_REMAPS and LAUNCH_ARGS expect a list of (key,value) tuples
-    # XACRO_ARGS 
+    # XACRO_ARGS expect a single string of key:=value
+    
+    def stringify(arg):
+        return arg if isinstance(arg, str) or isinstance(arg, Substitution) else str(arg)
     
     if type(params) == dict:        
         if target == NODE_PARAMS:
             return [params]
-        elif target in (NODE_REMAPS, LAUNCH_ARGS):        
-            # launch arguments do not support raw Booleans
-            return [(key, str(val) if isinstance(val, bool) else val) for key, val in params.items()]
+        elif target in (NODE_REMAPS, LAUNCH_ARGS):
+            # such arguments do not support raw numerical values
+            return [(key, stringify(val)) for key, val in params.items()]
         else:
             # xacro arguments are key:=value / only str or Substitution
-            if type(params) == str:
-                # user has passed raw args
-                return [' ', params]
-            else:
-                # args as a dict
-                out = []
-                for key, val in params.items():
-                    out += [' ', key]
-                    if val is not None:
-                        out += [':=', val]
-                return [arg if isinstance(arg, str) or isinstance(arg, Substitution) else str(arg)
-                       for arg in SimpleLauncher.flatten(out)]
+            out = []
+            for key, val in params.items():
+                out += [' ', key]
+                if val is not None:
+                    out += [':=', val]
+            return [stringify(arg) for arg in SimpleLauncher.flatten(out)]
         
     if type(params) in (list, tuple):
                 
@@ -63,7 +60,7 @@ def adapt_type(params, target):
 
 def only_show_args():
     '''
-    Returns True if the launch file was launch only to show its arguments
+    Returns True if the launch file was launched only to show its arguments
     '''
     return any(show_arg in sys.argv for show_arg in ('-s', '--show-args', '--show-arguments'))
 
@@ -80,36 +77,36 @@ def silent_exec(cmd):
         return check_output(cmd, stderr=STDOUT).decode().splitlines()
     except:
         return []    
-
-class IgnitionBridge:
-    ign2ros = '['
-    ros2ign = ']'
+    
+class GazeboBridge:
+    gz2ros = '['
+    ros2gz = ']'
     bidirectional = '@'
     models = None
     
     @staticmethod
     def read_models():
-        if IgnitionBridge.models is not None:
+        if GazeboBridge.models is not None:
             return
         if only_show_args():
-            # set a dummy world model, we are not runnign anyway
-            IgnitionBridge.models = ['','world [default]']
-            print('\033[93mThis launch file will request information on a running Ignition instance at the time of the launch\033[0m')
+            # set a dummy world model, we are not running anyway
+            GazeboBridge.models = ['','world [default]']
+            print('\033[93mThis launch file will request information on a running Gazebo instance at the time of the launch\033[0m')
             return
             
         models = silent_exec('ign model --list')
         if any(line.startswith('Requesting') for line in models):
-            IgnitionBridge.models = [line.strip('- ') for line in models]
-            print('\033[92mIgnitionBridge: connected to a running Ignition instance\033[0m')
+            GazeboBridge.models = [line.strip('- ') for line in models]
+            print('\033[92mGazeboBridge: connected to a running Gazebo instance\033[0m')
         else:
-            print('\033[91mIgnitionBridge: could not find any Ignition instance, launch will probably fail\033[0m')
+            print('\033[91mGazeboBridge: could not find any Gazebo instance, launch will probably fail\033[0m')
         
-    def __init__(self, ign_topic, ros_topic, msg, direction):
+    def __init__(self, gz_topic, ros_topic, msg, direction):
         '''
-        Create a bridge instance to be passed to SimpleLauncher.create_ign_bridge        
+        Create a bridge instance to be passed to SimpleLauncher.create_gz_bridge        
         '''
         
-        # find corresponding ign message 
+        # find corresponding gz message 
         # from https://github.com/ignitionrobotics/ros_ign/blob/foxy/ros_ign_bridge/README.md
         msg_map = {'std_msgs/msg/Bool': 'ignition.msgs.Boolean',
  'std_msgs/msg/Empty': 'ignition.msgs.Empty',
@@ -144,45 +141,45 @@ class IgnitionBridge:
             msg = msg.replace('/', '/msg/')
             
         if msg not in msg_map:
-            print(f'Cannot build a ros <-> ign bridge for message "{msg}": unknown type')
+            print(f'Cannot build a ros <-> gz bridge for message "{msg}": unknown type')
             return
         
-        if not IgnitionBridge.valid(direction):
-            print(f'Cannot build ros <-> ign bridge with direction "{direction}": should be in {{[,],@}}')
+        if not GazeboBridge.valid(direction):
+            print(f'Cannot build ros <-> gz bridge with direction "{direction}": should be in {{[,],@}}')
             return
                         
-        # ros2 run ros_ign_bridge parameter_bridge /chatter@std_msgs/msg/String@ignition.msgs.StringMsg
+        # ros2 run ros_gz_bridge parameter_bridge /chatter@std_msgs/msg/String@ignition.msgs.StringMsg
         # auto-detect relative or absolute topic
-        ign_abs_topic = ign_topic
+        gz_abs_topic = gz_topic
                         
-        if not( isinstance(ign_topic, str) and ign_topic.startswith('/') ):
-            ign_abs_topic = SimpleLauncher.name_join(IgnitionBridge.model_prefix(ign_topic))
+        if not( isinstance(gz_topic, str) and gz_topic.startswith('/') ):
+            gz_abs_topic = SimpleLauncher.name_join(GazeboBridge.model_prefix(gz_topic))
         
-        self.tag = SimpleLauncher.name_join(ign_topic,'@',msg,direction,msg_map[msg])
-        self.remapping = SimpleLauncher.name_join(ign_topic,':=', ros_topic)
+        self.tag = SimpleLauncher.name_join(gz_topic,'@',msg,direction,msg_map[msg])
+        self.remapping = SimpleLauncher.name_join(gz_topic,':=', ros_topic)
     
     @staticmethod
     def valid(direction):
-        return direction in (IgnitionBridge.ign2ros, IgnitionBridge.ros2ign, IgnitionBridge.bidirectional)    
+        return direction in (GazeboBridge.gz2ros, GazeboBridge.ros2gz, GazeboBridge.bidirectional)    
     
     @staticmethod
     def world():
-        IgnitionBridge.read_models()
-        return IgnitionBridge.models[1].replace(']', '[').split('[')[1]
+        GazeboBridge.read_models()
+        return GazeboBridge.models[1].replace(']', '[').split('[')[1]
     
     @staticmethod
     def model_prefix(model):
-        return SimpleLauncher.name_join(f"/world/{IgnitionBridge.world()}/model/",
+        return SimpleLauncher.name_join(f"/world/{GazeboBridge.world()}/model/",
                             model)
         
     @staticmethod
     def clock():
-        return IgnitionBridge('/clock', '/clock', 'rosgraph_msgs/msg/Clock', IgnitionBridge.ign2ros)
+        return GazeboBridge('/clock', '/clock', 'rosgraph_msgs/msg/Clock', GazeboBridge.gz2ros)
     
     @staticmethod
     def has_model(model):
-        IgnitionBridge.read_models()
-        return SimpleLauncher.py_eval("'", model, "' in ", str(IgnitionBridge.models))
+        GazeboBridge.read_models()
+        return SimpleLauncher.py_eval("'", model, "' in ", str(GazeboBridge.models))
 
 class SimpleLauncher:
     def __init__(self, namespace = '', use_sim_time = None):
@@ -209,7 +206,7 @@ class SimpleLauncher:
                              'Force use_sim_time parameter of instanciated nodes')
             self.auto_sim_time(self.arg('use_sim_time'))
         elif use_sim_time != 'auto':
-            raise("\033[93mSimpleLauncher: `use_sim_time` should be None, a Boolean, or 'auto' to rely on the /clock topic\033[0m")
+            raise(RuntimeWarning("\033[93mSimpleLauncher: `use_sim_time` should be None, a Boolean, or 'auto' to rely on the /clock topic\033[0m"))
         elif only_show_args():
             print('\033[93mThis launch file will forward use_sim_time to all nodes if /clock is advertized at the time of the launch\033[0m')
             return
@@ -568,10 +565,10 @@ class SimpleLauncher:
             
         self.node('joint_state_publisher', parameters = node_args, condition=UnlessCondition(use_gui))
         self.node('joint_state_publisher_gui', parameters = node_args, condition=IfCondition(use_gui))        
-        
-    def create_ign_bridge(self, bridges, name = None):
+                
+    def create_gz_bridge(self, bridges, name = 'gz_bridge'):
         '''
-        Create a ros_ign_bridge::parameter_bridge with the passed IgnitionBridge instances
+        Create a ros_gz_bridge::parameter_bridge with the passed GazeboBridge instances
         The bridge has a default name if not specified        
         '''
         if type(bridges) not in (list, tuple):
@@ -586,17 +583,23 @@ class SimpleLauncher:
         self.node('ros_ign_bridge','parameter_bridge', name=name, 
                   arguments=bridge_args + ['--ros-args'] + remappings,
                   parameters = {'args': bridge_args})
-
-    def spawn_ign_model(self, name, topic = 'robot_description', spawn_args = [], only_new = True):
+        
+    def create_gz_clock_bridge(self, name = 'gz_clock_bridge'):
         '''
-        Spawns a model into Ignition under the given name, from the given topic
+        Create a ros_gz_bridge::parameter_bridge for the /clock topic       
+        '''
+        self.create_gz_bridge(GazeboBridge.clock(), name)
+
+    def spawn_gz_model(self, name, topic = 'robot_description', spawn_args = [], only_new = True):
+        '''
+        Spawns a model into Gazebo under the given name, from the given topic
         Additional spawn_args can be given to specify e.g. the initial pose
         '''
         spawn_args += ['-topic',topic,'-name', name]
         
         # spawn if not already there
         if only_new:
-            with self.group(unless_condition = IgnitionBridge.has_model(name)):
+            with self.group(unless_condition = GazeboBridge.has_model(name)):
                 self.node('ros_ign_gazebo','create', arguments=spawn_args)
         else:
             self.node('ros_ign_gazebo','create', arguments=spawn_args)

@@ -116,7 +116,7 @@ Use the `executable` and `package` parameters if you want to use executors other
   with sl.container(name='my_container', output='screen', executable='component_container_isolated'):
 ```
 
-## Simulation and `use_sim_time`
+## `use_sim_time`
 
 Instanciating `sl = SimpleLauncher(use_sim_time = True)` is equivalent to:
 
@@ -139,36 +139,39 @@ The current `use_sim_time` setting can be retrieved through `sl.sim_time` that m
 
 In all cases, if the `use_sim_time` parameter is explicitely given to a node, it will be used instead of the `SimpleLauncher` instance one. 
 
+## Interaction with Gazebo / Ignition
+
+*Note: Ignition being renamed to Gazebo, all tools in this section use Gazebo / gz names*
 
 ### Spawn a model
 
-The `sl.spawn_ign_model(name, topic, spawn_args = [])` functions allows easily spawing a model from its `robot_description`:
+The `sl.spawn_gz_model(name, topic, spawn_args = [])` functions allows easily spawing a model from its `robot_description`:
 
-- `name` is the name this model will get in Ignition
+- `name` is the name this model will get in Gazebo
 - `topic` is the topic to obtain the model from, default is `robot_description` (relative to the current namespace)
 - `spawn_args` are any additional spawn arguments, e.g. the initial pose
 
-### Ignition world
+### Gazebo sim
 
-The `IgnitionBridge` class has a few static methods to interact with a **running Ignition**. Namely:
+The `GazeboBridge` class has a few static methods to interact with a **running Gazebo**. Namely:
 
-- `IgnitionBridge.world()` returns the current world name
-- `IgnitionBridge.model_prefix(model)` builds the Ignition topic relative to the given model `/world/<world>/model/<model>`
-- `IgnitionBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Ignition already
+- `GazeboBridge.world()` returns the current world name
+- `GazeboBridge.model_prefix(model)` builds the Ignition topic relative to the given model `/world/<world>/model/<model>`
+- `GazeboBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Gazebo already
 
-### Ignition bridge
+### Gazebo bridge
 
-The `IgnitionBridge` class allows easily creating bridges when using Ignition. Ignition has to be already running in order to get information on the simulation scene.
+The `GazeboBridge` class allows easily creating bridges when using Ignition. Ignition has to be already running in order to get information on the simulation scene.
 
-An instance is created with: `bridge = IgnitionBridge(<ignition_topic>, <ros_topic>, <ros_message>, direction)` where `direction` is either:
+An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>, <ros_message>, direction)` where `direction` is either:
 
-- `IgnitionBridge.ign2ros` for Ignition -> ROS
-- `IgnitionBridge.ros2ign` for ROS -> Ignition
-- `IgnitionBridge.bidirectional` for both
+- `GazeboBridge.gz2ros` for Gazebo -> ROS
+- `GazeboBridge.ros2gz` for ROS -> Gazebo
+- `GazeboBridge.bidirectional` for both
 
-The Ignition message type is deduced from the ros message type. Remapping will be set to the given `ros_topic`.
+The Gazebo message type is deduced from the ros message type. Remapping will be set to the given `ros_topic`.
 
-The SimpleLauncher instance can then run all created bridges with: `sl.create_ign_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
+The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
 
 ## Other shortcuts
 
@@ -313,16 +316,16 @@ Here we run Ignition and force all other nodes to `use_sim_time:=True`, unless t
 This is unlikely as this launch file spawns a simulator.
 
 ```
-from simple_launch import SimpleLauncher, IgnitionBridge
+from simple_launch import SimpleLauncher, GazeboBridge
 
 def generate_launch_description():
 
     # all nodes in this launch file will use_sim_time:=True
     sl = SimpleLauncher(use_sim_time=True)      
     
-    # run Ignition Gazebo + clock bridge 
+    # run Gazebo + clock bridge 
     sl.include('ros_ign_gazebo','ign_gazebo.launch.py',launch_arguments={'''some sdf world'''}})
-    sl.create_ign_bridge(IgnitionBridge.clock(), 'ign_clock')
+    sl.create_gz_clock_bridge()
     
     # run other nodes with sim time
     
@@ -330,13 +333,13 @@ def generate_launch_description():
     
 ```
 
-### Robot description and conditionnal Ignition bridge
+### Robot description and conditionnal Gazebo bridge
 
 The file below only runs by default a `robot_state_publisher` with `use_sim_time=False`.
-However, if it is included from another file with `use_sim_time:=True` then it also spawns the robot into Ignition and run two bridges for joint states and pose.
+However, if it is included from another file with `use_sim_time:=True` then it also spawns the robot into Gazebo and run two bridges for joint states and pose.
 
 ```
-from simple_launch import SimpleLauncher, IgnitionBridge
+from simple_launch import SimpleLauncher, GazeboBridge
 
 def generate_launch_description():
     
@@ -354,20 +357,20 @@ def generate_launch_description():
             # only execute this group if use_sim_time was set to True
     
             # spawn in Ignition at default pose if not already here
-            # uses IgnitionBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
-            sl.spawn_ign_model(robot)
+            # uses GazeboBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
+            sl.spawn_gz_model(robot)
 
             # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state
             # note the relative ROS topic 'joint_states' that is actually namespaced     
-            ign_js_topic = sl.name_join(IgnitionBridge.model_prefix(robot), '/joint_state')
-            js_bridge = IgnitionBridge(ign_js_topic, 'joint_states', 'sensor_msgs/JointState', IgnitionBridge.ign2ros)        
+            gz_js_topic = sl.name_join(GazeboBridge.model_prefix(robot), '/joint_state')
+            js_bridge = GazeboBridge(gz_js_topic, 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros)        
 
             # pose publisher bridge @ /model/<robot>
-            pose_bridge = IgnitionBridge(sl.name_join('/model/', robot, '/pose'),
-                                            'pose_gt', 'geometry_msgs/Pose', IgnitionBridge.ign2ros)
+            pose_bridge = GazeboBridge(sl.name_join('/model/', robot, '/pose'),
+                                            'pose_gt', 'geometry_msgs/Pose', GazeboBridge.gz2ros)
 
-            # create bridge node with these two topics
-            sl.create_ign_bridge([js_bridge, pose_bridge], 'ign_bridge')
+            # create bridge node with these two topics with default name gz_bridge
+            sl.create_gz_bridge([js_bridge, pose_bridge])
     
     return sl.launch_description()
 
