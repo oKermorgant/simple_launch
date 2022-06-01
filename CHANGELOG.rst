@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.4.0 (2022-06-01)
+------------------
 * use Gazebo instead of Ignition
 * better type comprehension
 * Contributors: Olivier Kermorgant
