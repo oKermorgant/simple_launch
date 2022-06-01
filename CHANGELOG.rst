@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* more handling of param types
+* Contributors: Olivier Kermorgant
+
 1.4.0 (2022-06-01)
 ------------------
 * use Gazebo instead of Ignition
