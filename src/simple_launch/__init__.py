@@ -195,6 +195,7 @@ class SimpleLauncher:
         self.ns_graph = {0: -1}
         self.composed = False        
         self.sim_time = None
+        self.gz_axes = []
         
         if namespace:
             self.entity(PushRosNamespace(namespace))
@@ -243,12 +244,21 @@ class SimpleLauncher:
             default_value=str(default_value),
             description=description))
         
-    def declare_gazebo_axes(self):
+    def declare_gazebo_axes(self, **axes):
         '''
         Declares classical Gazebo axes as launch arguments
+        If axes is void then declares all 6 axes with default value 0
+        Otherwise declares the given axes with the given defaults
         '''        
-        for axis in ('x','y','z','roll','pitch','yaw'):
-            self.declare_arg(axis, default_value=0.)
+        self.gz_axes = ('x','y','z','yaw','pitch','roll')
+        if len(axes) != 0:
+            self.gz_axes = [axis for axis,_ in axes.items() if axis in self.gz_axes]
+            for axis in self.gz_axes:
+                self.declare_arg(axis, default_value=axes[axis])
+            return
+        
+        for axis in self.gz_axes:
+            self.declare_arg(axis, default_value=axes[axis])
 
     def arg(self, name):
         '''
@@ -303,7 +313,7 @@ class SimpleLauncher:
         Generate arguments corresponding to Gazebo spawner
         '''
         axes={'x': 'x', 'y': 'y', 'z': 'z', 'roll': 'R', 'pitch': 'P', 'yaw': 'Y'}
-        return [['-'+tag, self.arg(axis)] for axis,tag in axes.items()]    
+        return [['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes]
     
     @staticmethod
     def path_join(*pathes):
@@ -597,7 +607,7 @@ class SimpleLauncher:
         Spawns a model into Gazebo under the given name, from the given topic
         Additional spawn_args can be given to specify e.g. the initial pose
         '''
-        spawn_args += ['-topic',topic,'-name', name]
+        spawn_args = self.flatten(spawn_args + ['-topic',topic,'-name', name])
         
         # spawn if not already there
         if only_new:
