@@ -20,7 +20,7 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 ### Node registration
 
-`sl.node(package, executable, **node_args)` where 
+`sl.node(package, executable, **node_args)` where
 
 - `package` is the node package
 - `executable` is the name of the executable
@@ -78,7 +78,7 @@ Groups are created through the `sl.with()` syntax and accepts both a namespace a
 ```
   with sl.group(if_condition=True):
     sl.node(package, executable)
-    
+
   with sl.group(unless_condition=<some expression>):
     sl.node(package, executable)
 ```
@@ -88,7 +88,7 @@ Groups are created through the `sl.with()` syntax and accepts both a namespace a
 ```
   with sl.group(if_arg='use_gui'):
     sl.node(package, executable)
-    
+
   with sl.group(unless_arg='dont_do'):
     sl.node(package, executable)
 ```
@@ -96,14 +96,14 @@ Groups are created through the `sl.with()` syntax and accepts both a namespace a
 `if_arg` / `unless_arg` is expected to be the name of a launch argument. These two lines are equivalent:
 
 ```
-  with sl.group(if_arg='use_gui'):  
+  with sl.group(if_arg='use_gui'):
   with sl.group(if_condition=sl.arg('use_gui'):
 ```
 If `if_arg` / `unless_arg` is not a string then it is considered as a `if_condition` / `unless_condition`.
 
 ### Creating containers
 
-This syntax adds the `composition/composition::Talker` as a ComposableNode 
+This syntax adds the `composition/composition::Talker` as a ComposableNode
 
 ```
   with sl.container(name='my_container', output='screen'):
@@ -137,7 +137,7 @@ The current `use_sim_time` setting can be retrieved through `sl.sim_time` that m
 - a raw Boolean, if `use_sim_time` was set to `'auto'`, depending on the `/clock` topic being advertized
 - a Boolean launch argument, if `use_sim_time` was set to `True` or `False`
 
-In all cases, if the `use_sim_time` parameter is explicitely given to a node, it will be used instead of the `SimpleLauncher` instance one. 
+In all cases, if the `use_sim_time` parameter is explicitely given to a node, it will be used instead of the `SimpleLauncher` instance one.
 
 ## Interaction with Gazebo / Ignition
 
@@ -218,8 +218,8 @@ If `file_dir` is `None` then the `find` function will actually look for the file
 ### Fallback to low-level syntax
 
 If any unavailable functionality is needed, the `sl.entity(entity)` function adds any passed `Entity` at the current namespace / conditional / composition level.
-        
-        
+
+
 ## Examples
 
 Examples can be found in the corresponding folder.
@@ -240,19 +240,19 @@ def generate_launch_description():
     Launch description for a single robot - runs the two nodes in their own namespace
     '''
     sl = SimpleLauncher()
-        
+
     sl.declare_arg('prefix', default_value = '', description='name of the robot (+ tf prefix)')
     sl.declare_arg('x', default_value = 0, description='x-offset of the robot')
     sl.declare_arg('y', default_value = 0, description='y-offset of the robot')
     sl.declare_arg('use_gui', default_value = True, description='Use JSP gui')
-    
+
     xacro_args = sl.arg_map(('prefix', 'x', 'y'))
-    xacro_args['prefix'] = [xacro_args['prefix'], ':']                            
-    
+    xacro_args['prefix'] = [xacro_args['prefix'], ':']
+
     with sl.group(ns=sl.arg('prefix')):
         sl.robot_state_publisher('simple_launch', 'turret.xacro', xacro_args = xacro_args)
         sl.joint_state_publisher(sources_list = ['source_joints'], use_gui = sl.arg('use_gui'))
-        
+
     return sl.launch_description()
 ```
 
@@ -264,31 +264,31 @@ The file below fires up either `robot1` or `robot2` (or both) and also has a boo
 from simple_launch import SimpleLauncher
 
 def generate_launch_description():
-    
+
     sl = SimpleLauncher()
-    
+
     # conditional args
     sl.declare_arg('robot1', default_value=False, description='use robot 1')
     sl.declare_arg('robot2', default_value=True, description='use robot 2')
     sl.declare_arg('no_robot2', default_value=False, description='cancel use of robot 2')
     sl.declare_arg('rviz', default_value=False, description='Bringup RViz2')
-    
+
     # numeric args
     sl.declare_arg('robot2_x', default_value=1, description='x-offset of robot 2')
     sl.declare_arg('robot2_y', default_value=1, description='y-offset of robot 2')
-    
+
     with sl.group(if_arg='robot1'):
         sl.include('simple_launch', 'included_launch.py', launch_arguments = [('prefix', 'robot1')])
-        
+
     with sl.group(if_arg='robot2'):
         with sl.group(unless_arg='no_robot2'):
             args = {'prefix': 'robot2', 'x': sl.arg('robot2_x'), 'y': sl.arg('robot2_y')}
             sl.include('simple_launch', 'included_launch.py', launch_arguments=args)
-            
+
     with sl.group(if_arg='rviz'):
         rviz_config = sl.find('simple_launch', 'turret.rviz')
         sl.node('rviz2', 'rviz2', arguments = ['-d', rviz_config])
-        
+
     return sl.launch_description()
 ```
 
@@ -300,13 +300,13 @@ The file below is another way to write the [composition launch example](https://
 from simple_launch import SimpleLauncher
 
 def generate_launch_description():
-    
+
     sl = SimpleLauncher()
-    
+
     with sl.container(name='my_container', output='screen'):
         sl.node(package='composition', plugin='Talker', name='talker')
         sl.node(package='composition', plugin='Listener', name='listener')
-        
+
     return sl.launch_description()
 ```
 
@@ -321,16 +321,16 @@ from simple_launch import SimpleLauncher, GazeboBridge
 def generate_launch_description():
 
     # all nodes in this launch file will use_sim_time:=True
-    sl = SimpleLauncher(use_sim_time=True)      
-    
-    # run Gazebo + clock bridge 
+    sl = SimpleLauncher(use_sim_time=True)
+
+    # run Gazebo + clock bridge
     sl.include('ros_ign_gazebo','ign_gazebo.launch.py',launch_arguments={'''some sdf world'''}})
     sl.create_gz_clock_bridge()
-    
+
     # run other nodes with sim time
-    
+
     return sl.launch_description()
-    
+
 ```
 
 ### Robot description and conditionnal Gazebo bridge
@@ -342,28 +342,28 @@ However, if it is included from another file with `use_sim_time:=True` then it a
 from simple_launch import SimpleLauncher, GazeboBridge
 
 def generate_launch_description():
-    
+
     sl = SimpleLauncher(use_sim_time=False)
-    
+
     # namespace is a launch argument, not a Python string
     sl.declare_arg('robot', default_value = 'robot1')
     robot = sl.arg('robot')
-    
+
     with sl.group(ns = robot):
         # robot_state_publisher is always run
         sl.robot_state_publisher('my_description', 'my_robot.xacro')
-        
+
         with sl.group(if_condition = sl.sim_time):
             # only execute this group if use_sim_time was set to True
-    
+
             # spawn in Ignition at default pose if not already here
             # uses GazeboBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
             sl.spawn_gz_model(robot)
 
             # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state
-            # note the relative ROS topic 'joint_states' that is actually namespaced     
+            # note the relative ROS topic 'joint_states' that is actually namespaced
             gz_js_topic = sl.name_join(GazeboBridge.model_prefix(robot), '/joint_state')
-            js_bridge = GazeboBridge(gz_js_topic, 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros)        
+            js_bridge = GazeboBridge(gz_js_topic, 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros)
 
             # pose publisher bridge @ /model/<robot>
             pose_bridge = GazeboBridge(sl.name_join('/model/', robot, '/pose'),
@@ -371,7 +371,7 @@ def generate_launch_description():
 
             # create bridge node with these two topics with default name gz_bridge
             sl.create_gz_bridge([js_bridge, pose_bridge])
-    
+
     return sl.launch_description()
 
 ```

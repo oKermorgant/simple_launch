@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <robot name="turret" xmlns:xacro="http://www.ros.org/wiki/xacro">
-    
+
 <xacro:arg name="x" default="0"/>
 <xacro:arg name="y" default="0"/>
 <xacro:arg name="prefix" default=""/>
@@ -20,15 +20,15 @@
  <material name="mat4">
         <color rgba=".0 1 0 1"/>
       </material>
-      
+
 <link name="world"/>
-    
+
 <joint name="base_link" type="fixed">
     <parent link="world" />
     <child link="$(arg prefix)base_link" />
     <origin xyz="$(arg x) $(arg y) 0.0" />
 </joint>
-      
+
 <!-- Links -->
   <link name="$(arg prefix)base_link">
     <visual>
