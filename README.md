@@ -118,19 +118,6 @@ Use the `executable` and `package` parameters if you want to use executors other
 
 ## `use_sim_time`
 
-Instanciating `sl = SimpleLauncher(use_sim_time = True)` is equivalent to:
-
-```
-    sl = SimpleLauncher()
-    sl.declare_arg('use_sim_time', True)
-    sl.auto_sim_time(force = sl.arg('use_sim_time'))
-```
-
-The `use_sim_time` parameter will be forwarded to all nodes launched by this `SimpleLauncher` instance.
-This allows having a default `use_sim_time` value in the launch file, yet being able to have it changed through the `use_sim_time` launch argument if this file is included by another.
-
-Instanciating `sl = SimpleLauncher(use_sim_time = 'auto')` forces the instance to check if the `/clock` topic is advertized (typically by a simulator) and forward the suitable `use_sim_time` parameter to all its node. No launch argument will be declared in this case.
-
 The current `use_sim_time` setting can be retrieved through `sl.sim_time` that may be:
 
 - `None`, if `use_sim_time` was not set in the `SimpleLauncher` constructor
@@ -151,17 +138,28 @@ The `sl.spawn_gz_model(name, topic, spawn_args = [])` functions allows easily sp
 - `topic` is the topic to obtain the model from, default is `robot_description` (relative to the current namespace)
 - `spawn_args` are any additional spawn arguments, e.g. the initial pose
 
+### Declare initial pose
+
+Calling `sl.declare_gazebo_axes()` will declare all 6 parameters `(x,y,z,roll,pitch,yaw)` with null default values.
+If any axis is given (e.g. `sl.declare_gazebo_axes(yaw = 3.14)` then only this parameter will be declared.
+
+Such parameters can be retrieved through `sl.gazebo_axes_args()`. As a consequence, it is easy to spawn a model with:
+```
+sl.declare_gazebo_axes()
+sl.spawn_gz_model(name, spawn_args = sl.gazebo_axes_args())
+```
+
 ### Gazebo sim
 
 The `GazeboBridge` class has a few static methods to interact with a **running Gazebo**. Namely:
 
 - `GazeboBridge.world()` returns the current world name
-- `GazeboBridge.model_prefix(model)` builds the Ignition topic relative to the given model `/world/<world>/model/<model>`
+- `GazeboBridge.model_prefix(model)` builds the Gazebo topic relative to the given model `/world/<world>/model/<model>`
 - `GazeboBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Gazebo already
 
 ### Gazebo bridge
 
-The `GazeboBridge` class allows easily creating bridges when using Ignition. Ignition has to be already running in order to get information on the simulation scene.
+The `GazeboBridge` class allows easily creating bridges when using Gazebo. Gazebo has to be already running in order to get information on the simulation scene.
 
 An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>, <ros_message>, direction)` where `direction` is either:
 
@@ -172,6 +170,7 @@ An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>,
 The Gazebo message type is deduced from the ros message type. Remapping will be set to the given `ros_topic`.
 
 The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
+If some bridges involve `sensor_msgs/Image` then SimpleLaunch will spawn a dedicated `ros_ign_image` bridge.
 
 ## Other shortcuts
 

@@ -55,6 +55,9 @@ def adapt_type(params, target):
 
         if all(type(elem) in (tuple,list) and len(elem) == 2 for elem in params):
             # (key, val) pairs
+            if target in (NODE_REMAPS, LAUNCH_ARGS):
+                # no-op
+                return params
             return adapt_type(dict(params), target)
 
     return params
@@ -186,6 +189,10 @@ class GazeboBridge:
     def model_prefix(model):
         return SimpleLauncher.name_join(f"/world/{GazeboBridge.world()}/model/",
                             model)
+
+    @staticmethod
+    def model_topic(model, topic):
+        return SimpleLauncher.name_join("/model/", model, '/', topic)
 
     @staticmethod
     def clock():
@@ -615,10 +622,10 @@ class SimpleLauncher:
 
         if len(im_bridges):
             # use remapping to ROS topics
-            remappings = {}
+            remappings = []
             for bridge in im_bridges:
                 for ext in ('', '/compressed', '/compressedDepth'):
-                    remappings.update({bridge.gz_camera+ext:bridge.ros_topic+ext})
+                    remappings.append((self.name_join(bridge.gz_camera,ext), self.name_join(bridge.ros_topic,ext)))
 
             self.node('ros_ign_image', 'image_bridge', name=self.name_join(name, '_image'),
                       arguments = [bridge.gz_camera for bridge in im_bridges],
