@@ -498,8 +498,11 @@ class SimpleLauncher:
 
         if self.sim_time is not None:
             if 'parameters' in node_args:
-                if 'use_sim_time' not in node_args['parameters'][0]:
+                if type(node_args['parameters'][0]) == dict and 'use_sim_time' not in node_args['parameters'][0]:
                     node_args['parameters'][0]['use_sim_time'] = self.sim_time
+                else:
+                    print('Cannot update node params, unknown type',node_args['parameters'])
+                    #node_args['parameters'] += [{'use_sim_time': self.sim_time}]
             else:
                 node_args['parameters'] = [{'use_sim_time':  self.sim_time}]
 
