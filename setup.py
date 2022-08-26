@@ -7,7 +7,7 @@ package_name = 'simple_launch'
 
 setup(
     name=package_name,
-    version='1.4.1',
+    version='1.5.0',
     packages=find_packages('src', exclude=['test']),
     package_dir={'': 'src'},
     data_files=[

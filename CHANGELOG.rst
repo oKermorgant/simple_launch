@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.5.0 (2022-08-26)
+------------------
 * allow spawning a Gz model from file
 * parameters are list of dict
 * allow substitution for topics in ros_ign_image bridge
