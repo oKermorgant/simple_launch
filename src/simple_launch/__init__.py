@@ -640,12 +640,15 @@ class SimpleLauncher:
         '''
         self.create_gz_bridge(GazeboBridge.clock(), name)
 
-    def spawn_gz_model(self, name, topic = 'robot_description', spawn_args = [], only_new = True):
+    def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = [], only_new = True):
         '''
-        Spawns a model into Gazebo under the given name, from the given topic
+        Spawns a model into Gazebo under the given name, from the given topic or file
         Additional spawn_args can be given to specify e.g. the initial pose
-        '''
-        spawn_args = self.flatten(spawn_args + ['-topic',topic,'-name', name])
+        '''        
+        if model_file is not None:
+            spawn_args = self.flatten(spawn_args + ['-file',model_file,'-name', name])
+        else:        
+            spawn_args = self.flatten(spawn_args + ['-topic',topic,'-name', name])
 
         # spawn if not already there
         if only_new:

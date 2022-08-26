@@ -64,7 +64,7 @@ The helper class allows declaring launch arguments and getting them in return:
 
 ## Node groups
 
-Groups are created through the `sl.with()` syntax and accepts both a namespace and/or an if/unless condition:
+Groups are created through the `with sl.group():` syntax and accepts both a namespace and/or an if/unless condition:
 
 ### By namespace
 
@@ -132,10 +132,11 @@ In all cases, if the `use_sim_time` parameter is explicitely given to a node, it
 
 ### Spawn a model
 
-The `sl.spawn_gz_model(name, topic, spawn_args = [])` functions allows easily spawing a model from its `robot_description`:
+The `sl.spawn_gz_model(name, topic, model_file = None, spawn_args = [])` functions allows easily spawing a model from its `robot_description`:
 
 - `name` is the name this model will get in Gazebo
 - `topic` is the topic to obtain the model from, default is `robot_description` (relative to the current namespace)
+- `model_file` is the raw (urdf or sdf) file. If defined then this will spawn this model and ignore the topic
 - `spawn_args` are any additional spawn arguments, e.g. the initial pose
 
 ### Declare initial pose
@@ -170,7 +171,7 @@ An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>,
 The Gazebo message type is deduced from the ros message type. Remapping will be set to the given `ros_topic`.
 
 The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
-If some bridges involve `sensor_msgs/Image` then SimpleLaunch will spawn a dedicated `ros_ign_image` bridge.
+If some bridges involve `sensor_msgs/Image` then a dedicated `ros_ign_image` bridge will be used.
 
 ## Other shortcuts
 
