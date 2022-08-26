@@ -2,6 +2,15 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* allow spawning a Gz model from file
+* parameters are list of dict
+* allow substitution for topics in ros_ign_image bridge
+* Gazebo bridge handles invalid ROS topics through yaml config file. Image bridges are automatically run through ros_ign_image
+* better handling of gazebo spawn pose
+* Contributors: Olivier Kermorgant
+
 1.4.1 (2022-06-01)
 ------------------
 * more handling of param types
