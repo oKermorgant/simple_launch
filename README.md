@@ -132,12 +132,15 @@ In all cases, if the `use_sim_time` parameter is explicitely given to a node, it
 
 ### Spawn a model
 
-The `sl.spawn_gz_model(name, topic, model_file = None, spawn_args = [])` functions allows easily spawing a model from its `robot_description`:
+The `sl.spawn_gz_model(name, topic, model_file = None, spawn_args = [], only_new = True)` functions allows easily spawing a model from its `robot_description`:
 
 - `name` is the name this model will get in Gazebo
 - `topic` is the topic to obtain the model from, default is `robot_description` (relative to the current namespace)
-- `model_file` is the raw (urdf or sdf) file. If defined then this will spawn this model and ignore the topic
+- `model_file` is the path to the (urdf or sdf) file. If defined then this will spawn this model and ignore the topic
+- `only_new` if True, will not spawn the model if it already exists in a running Gazebo instance
 - `spawn_args` are any additional spawn arguments, e.g. the initial pose
+
+**example:** `sl.spawn_gz_model('my_robot', model_file = sl.find('my_pkg', 'my_model.urdf'))`
 
 ### Declare initial pose
 
