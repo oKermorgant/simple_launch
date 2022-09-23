@@ -12,14 +12,13 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Comm
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.descriptions import ComposableNode
 from contextlib import contextmanager
+from subprocess import check_output, STDOUT
 import sys
-
-def regular_path_elem(path):
-    return path is None or type(path) == str
 
 NODE_REMAPS = LAUNCH_ARGS = 1
 NODE_PARAMS = 2
 XACRO_ARGS = 3
+
 
 def adapt_type(params, target):
     # detect type of passed params and adapts to launch API
@@ -73,7 +72,6 @@ def silent_exec(cmd):
     Executes the given command and returns the output
     Returns an empty list if any error
     '''
-    from subprocess import check_output, STDOUT
     if isinstance(cmd, str):
         from shlex import split
         cmd = split(cmd)
@@ -354,10 +352,13 @@ class SimpleLauncher:
         '''
 
         # resolve package
-        package_dir = package and get_package_share_directory(package) or None
+        package_dir = get_package_share_directory(package) if package else None
 
         # deal with non-resolvable package - cannot find anything in there
-        if not regular_path_elem(package) or not regular_path_elem(file_name) or not regular_path_elem(file_dir):
+        def is_substitution(elem):
+            return elem is not None and type(elem) != str
+        
+        if is_substitution(package) or is_substitution(file_name) or is_substitution(file_dir):
             return SimpleLauncher.path_join(package_dir, file_dir, file_name)
 
         # below this point all arguments are strings or None
@@ -375,7 +376,7 @@ class SimpleLauncher:
                 return join(package_dir, root, file_name)
 
         # not there
-        raise Exception('Could not find file {} in package {}'.format(file_name, package))
+        raise Exception(f'Could not find file {file_name} in package {package}')
 
     def group_level_down(self):
         self.entities.append([])
@@ -609,6 +610,9 @@ class SimpleLauncher:
         '''
         if type(bridges) not in (list, tuple):
             bridges = [bridges]
+            
+        from os import environ
+        gz_ign = 'ros_ign' if environ['ROS_DISTRO'] in ('foxy', 'galactic') else 'ros_gz'
 
         std_config = sum([bridge.yaml for bridge in bridges if bridge.yaml is not None], [])
         im_bridges = [bridge for bridge in bridges if bridge.yaml is None]
@@ -620,17 +624,17 @@ class SimpleLauncher:
 
             self.entity(ExecuteProcess(cmd=['echo ', self.name_join('"',std_config,'"'), ' >> ', dst],
                                     shell=True, name=self.name_join(name, '_config')))
-            self.node('ros_ign_bridge', 'parameter_bridge', name=name,
+            self.node(f'{gz_ign}_bridge', 'parameter_bridge', name=name,
                         parameters = {'config_file':dst})
 
         if len(im_bridges):
             # use remapping to ROS topics
             remappings = []
             for bridge in im_bridges:
-                for ext in ('', '/compressed', '/compressedDepth'):
+                for ext in ('', '/compressed', '/compressedDepth', '/theora'):
                     remappings.append((self.name_join(bridge.gz_camera,ext), self.name_join(bridge.ros_topic,ext)))
 
-            self.node('ros_ign_image', 'image_bridge', name=self.name_join(name, '_image'),
+            self.node(f'{gz_ign}_image', 'image_bridge', name=self.name_join(name, '_image'),
                       arguments = [bridge.gz_camera for bridge in im_bridges],
                       remappings = remappings)
 
