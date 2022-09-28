@@ -12,13 +12,14 @@ from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Comm
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.descriptions import ComposableNode
 from contextlib import contextmanager
-from subprocess import check_output, STDOUT
 import sys
+from .simple_substitution import SimpleSubstitution, flatten
+from .gazebo import *
+from typing import List, Text
 
 NODE_REMAPS = LAUNCH_ARGS = 1
 NODE_PARAMS = 2
 XACRO_ARGS = 3
-
 
 def adapt_type(params, target):
     # detect type of passed params and adapts to launch API
@@ -27,7 +28,7 @@ def adapt_type(params, target):
     # XACRO_ARGS expect a single string of key:=value
 
     def stringify(arg):
-        if any(isinstance(arg, ok_type) for ok_type in (str, Substitution, list)):
+        if isinstance(arg, (str, Substitution, list)):
             return arg
         return str(arg)
 
@@ -39,12 +40,12 @@ def adapt_type(params, target):
             return [(key, stringify(val)) for key, val in params.items()]
         else:
             # xacro arguments are key:=value / only str or Substitution
-            out = []
+            out = SimpleSubstitution()
             for key, val in params.items():
                 out += [' ', key]
                 if val is not None:
-                    out += [':=', val]
-            return [stringify(arg) for arg in SimpleLauncher.flatten(out)]
+                    out += [':=', stringify(val)]
+            return out
 
     if type(params) in (list, tuple):
 
@@ -61,147 +62,8 @@ def adapt_type(params, target):
 
     return params
 
-def only_show_args():
-    '''
-    Returns True if the launch file was launched only to show its arguments
-    '''
-    return any(show_arg in sys.argv for show_arg in ('-s', '--show-args', '--show-arguments'))
-
-def silent_exec(cmd):
-    '''
-    Executes the given command and returns the output
-    Returns an empty list if any error
-    '''
-    if isinstance(cmd, str):
-        from shlex import split
-        cmd = split(cmd)
-    try:
-        return check_output(cmd, stderr=STDOUT).decode().splitlines()
-    except:
-        return []
-
-class GazeboBridge:
-    gz2ros = '['
-    ros2gz = ']'
-    bidirectional = '@'
-    models = None
-
-    @staticmethod
-    def read_models():
-        if GazeboBridge.models is not None:
-            return
-        if only_show_args():
-            # set a dummy world model, we are not running anyway
-            GazeboBridge.models = ['','world [default]']
-            print('\033[93mThis launch file will request information on a running Gazebo instance at the time of the launch\033[0m')
-            return
-
-        models = silent_exec('ign model --list')
-        if any(line.startswith('Requesting') for line in models):
-            GazeboBridge.models = [line.strip('- ') for line in models]
-            print('\033[92mGazeboBridge: connected to a running Gazebo instance\033[0m')
-        else:
-            print('\033[91mGazeboBridge: could not find any Gazebo instance, launch will probably fail\033[0m')
-
-    def __init__(self, gz_topic, ros_topic, msg, direction):
-        '''
-        Create a bridge instance to be passed to SimpleLauncher.create_gz_bridge
-        '''
-
-        # find corresponding gz message
-        # from https://github.com/ignitionrobotics/ros_ign/blob/foxy/ros_ign_bridge/README.md
-        msg_map = {'std_msgs/msg/Bool': 'ignition.msgs.Boolean',
- 'std_msgs/msg/Empty': 'ignition.msgs.Empty',
- 'std_msgs/msg/Float32': 'ignition.msgs.Float',
- 'std_msgs/msg/Float64': 'ignition.msgs.Double',
- 'std_msgs/msg/Header': 'ignition.msgs.Header',
- 'std_msgs/msg/Int32': 'ignition.msgs.Int32',
- 'std_msgs/msg/String': 'ignition.msgs.StringMsg',
- 'geometry_msgs/msg/Quaternion': 'ignition.msgs.Quaternion',
- 'geometry_msgs/msg/Vector3': 'ignition.msgs.Vector3d',
- 'geometry_msgs/msg/Point': 'ignition.msgs.Vector3d',
- 'geometry_msgs/msg/Pose': 'ignition.msgs.Pose',
- 'geometry_msgs/msg/PoseStamped': 'ignition.msgs.Pose',
- 'geometry_msgs/msg/Transform': 'ignition.msgs.Pose',
- 'geometry_msgs/msg/TransformStamped': 'ignition.msgs.Pose',
- 'geometry_msgs/msg/Twist': 'ignition.msgs.Twist',
- 'nav_msgs/msg/Odometry': 'ignition.msgs.Odometry',
- 'rosgraph_msgs/msg/Clock': 'ignition.msgs.Clock',
- 'sensor_msgs/msg/BatteryState': 'ignition.msgs.BatteryState',
- 'sensor_msgs/msg/CameraInfo': 'ignition.msgs.CameraInfo',
- 'sensor_msgs/msg/FluidPressure': 'ignition.msgs.FluidPressure',
- 'sensor_msgs/msg/Imu': 'ignition.msgs.IMU',
- 'sensor_msgs/msg/Image': 'ignition.msgs.Image',
- 'sensor_msgs/msg/JointState': 'ignition.msgs.Model',
- 'sensor_msgs/msg/LaserScan': 'ignition.msgs.LaserScan',
- 'sensor_msgs/msg/MagneticField': 'ignition.msgs.Magnetometer',
- 'sensor_msgs/msg/PointCloud2': 'ignition.msgs.PointCloudPacked',
- 'tf2_msgs/msg/TFMessage': 'ignition.msgs.Pose_V',
- 'trajectory_msgs/msg/JointTrajectory': 'ignition.msgs.JointTrajectory'}
-
-        if '/msg/' not in msg:
-            msg = msg.replace('/', '/msg/')
-
-        if msg not in msg_map:
-            print(f'Cannot build a ros <-> gz bridge for message "{msg}": unknown type')
-            return
-
-        if not GazeboBridge.valid(direction):
-            print(f'Cannot build ros <-> gz bridge with direction "{direction}": should be in {{[,],@}}')
-            return
-
-        # Images with gz2ros use ros_ign_image bridge
-        if msg == 'sensor_msgs/msg/Image':
-            self.yaml = None
-            self.gz_camera = gz_topic
-            self.ros_topic = ros_topic
-            return
-
-        '''
-        use YAML-based config for other bridges
-        - topic_name: "chatter"
-          ign_topic_name: "ign_chatter"
-          ros_type_name: "std_msgs/msg/String"
-          ign_type_name: "ignition.msgs.StringMsg"
-          direction: BIDIRECTIONAL  # Default "BIDIRECTIONAL" - Bridge both directions
-                                    # "IGN_TO_ROS" - Bridge Ignition topic to ROS
-                                    # "ROS_TO_IGN" - Bridge ROS topic
-        '''
-        direction_explicit = {self.bidirectional: 'BIDIRECTIONAL', self.gz2ros: 'IGN_TO_ROS', self.ros2gz: 'ROS_TO_IGN'}
-        self.yaml = SimpleLauncher.name_join('- ign_topic_name: ', gz_topic, '\n',
-                                 '  ign_type_name: ', msg_map[msg], '\n',
-                                 '  ros_topic_name: ',ros_topic, '\n',
-                                 '  ros_type_name: ', msg, '\n',
-                                 '  direction: ', direction_explicit[direction], '\n')
-
-    @staticmethod
-    def valid(direction):
-        return direction in (GazeboBridge.gz2ros, GazeboBridge.ros2gz, GazeboBridge.bidirectional)
-
-    @staticmethod
-    def world():
-        GazeboBridge.read_models()
-        return GazeboBridge.models[1].replace(']', '[').split('[')[1]
-
-    @staticmethod
-    def model_prefix(model):
-        return SimpleLauncher.name_join(f"/world/{GazeboBridge.world()}/model/",
-                            model)
-
-    @staticmethod
-    def model_topic(model, topic):
-        return SimpleLauncher.name_join("/model/", model, '/', topic)
-
-    @staticmethod
-    def clock():
-        return GazeboBridge('/clock', '/clock', 'rosgraph_msgs/msg/Clock', GazeboBridge.gz2ros)
-
-    @staticmethod
-    def has_model(model):
-        GazeboBridge.read_models()
-        return SimpleLauncher.py_eval("'", model, "' in ", str(GazeboBridge.models))
-
 class SimpleLauncher:
+
     def __init__(self, namespace = '', use_sim_time = None):
         '''
         Initializes entities in the given workspace
@@ -214,6 +76,7 @@ class SimpleLauncher:
         self.composed = False
         self.sim_time = None
         self.gz_axes = []
+        self.__context = None
 
         if namespace:
             self.entity(PushRosNamespace(namespace))
@@ -224,7 +87,7 @@ class SimpleLauncher:
         # deal with use_sim_time
         if isinstance(use_sim_time, bool):
             self.declare_arg('use_sim_time', use_sim_time,
-                             'Force use_sim_time parameter of instanciated nodes')
+                             description = 'Force use_sim_time parameter of instanciated nodes')
             self.auto_sim_time(self.arg('use_sim_time'))
         elif use_sim_time != 'auto':
             raise(RuntimeWarning("\033[93mSimpleLauncher: `use_sim_time` should be None, a Boolean, or 'auto' to rely on the /clock topic\033[0m"))
@@ -253,14 +116,24 @@ class SimpleLauncher:
         else:
             self.sim_time = force
 
-    def declare_arg(self, name, default_value = None, description = None):
+    def declare_arg(self, name, default_value = None, **kwargs):
         '''
         Add an argument to the launch file
         '''
+        if self.has_context():
+            raise Exception('simple_launch: declaring a launch argument while inside an opaque function')
+
         self.entity(DeclareLaunchArgument(
             name,
             default_value=str(default_value),
-            description=description))
+            **kwargs))
+
+        return self.arg(name)
+
+    @staticmethod
+    def ros_version():
+        from os import environ
+        return environ['ROS_DISTRO']
 
     def declare_gazebo_axes(self, **axes):
         '''
@@ -268,63 +141,87 @@ class SimpleLauncher:
         If axes is void then declares all 6 axes with default value 0
         Otherwise declares the given axes with the given defaults
         '''
-        self.gz_axes = ('x','y','z','yaw','pitch','roll')
-        if len(axes) != 0:
+        if len(axes):
             self.gz_axes = [axis for axis,_ in axes.items() if axis in self.gz_axes]
             for axis in self.gz_axes:
                 self.declare_arg(axis, default_value=axes[axis])
             return
-
+        # no axis specified,
+        self.gz_axes = ('x','y','z','yaw','pitch','roll')
         for axis in self.gz_axes:
-            self.declare_arg(axis, default_value=axes[axis])
+            self.declare_arg(axis, default_value=0.)
 
     def arg(self, name):
         '''
         Retrieve an argument
         '''
         if type(name) != str:
-            return name
-        return LaunchConfiguration(name)
+            return self.try_perform(name)
+        return self.try_perform(SimpleSubstitution(LaunchConfiguration(name)))
 
-    def arg_map(self, names, to_update={}):
+    def arg_map(self, *names):
         '''
         Retrieves several arguments as a dict
-        Updates passed dictionary if any
         '''
-        return {**to_update, **dict((name, self.arg(name)) for name in names)}
+        if len(names) == 1 and isinstance(names[0], (list, tuple)):
+            # deprecated syntax, names was a tuple
+            names = names[0]
+        return dict((name, self.arg(name)) for name in names)
 
-    def launch_description(self):
+    def launch_description(self, opaque_function = None):
         '''
         Returns the setup launch description
         This value can be directly returned from generate_launch_description()
         It can also be stored in order to add custom entities
-        '''
-        return LaunchDescription(self.entities[0])
 
-    @staticmethod
-    def flatten(nested):
+        If opaque_function is not None, then returns the generate_launch_description() wrapper around the passed function
         '''
-        Take a list with possibly sub-(sub-(...))-lists elements and make it to a 1-dim list
-        '''
-        return sum([SimpleLauncher.flatten(elem) if type(elem)==list else [elem] for elem in nested],[])
+        if opaque_function is None:
+            return self.entities[0] if self.has_context() else LaunchDescription(self.entities[0])
 
-    @staticmethod
-    def py_eval(*elems):
+        if self.has_context():
+            raise Exception(f'Calling SimpleLauncher.launch_description with opaque function within an opaque function')
+
+        from launch.actions import OpaqueFunction
+
+        # the actual generate_launch_description function, just wrapping the passed opaque function
+        def generate_launch_description():
+            def wrapped_opaque_function(context):
+                self.__context = context
+                return opaque_function()
+
+            return LaunchDescription(self.entities[0] + [OpaqueFunction(function = wrapped_opaque_function)])
+
+        return generate_launch_description
+
+    def has_context(self):
+        return self.__context is not None
+
+    def try_perform(self, substitution):
+        '''
+        Returns the performed value if the context is defined, otherwise the substitution
+        '''
+        if isinstance(substitution, Text):
+            return substitution
+        if not self.has_context():
+            return substitution
+        from ast import literal_eval
+        performed = substitution.perform(self.__context)
+        try:
+            return literal_eval(substitution.perform(self.__context))
+        except ValueError:
+            if performed.lower() in ('true', 'false'):
+                return literal_eval(performed.title())
+            return performed
+
+    def py_eval(self, *elems):
         '''
         Evaluates the Python expression
         '''
-        return PythonExpression(elems)
+        return self.try_perform(SimpleSubstitution(PythonExpression(elems)))
 
-    @staticmethod
-    def py_eval_str(*elems):
-        '''
-        Evaluates the Python expression as a string
-        '''
-        return SimpleLauncher.name_join("'",PythonExpression(elems),"'")
-
-    @staticmethod
-    def name_join(*elems):
-        return SimpleLauncher.flatten([TextSubstitution(text=elem) if type(elem)==str else elem for elem in elems if elem is not None])
+    def name_join(self, *elems):
+        return self.try_perform(SimpleSubstitution(elems))
 
     def gazebo_axes_args(self):
         '''
@@ -333,14 +230,13 @@ class SimpleLauncher:
         axes={'x': 'x', 'y': 'y', 'z': 'z', 'roll': 'R', 'pitch': 'P', 'yaw': 'Y'}
         return [['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes]
 
-    @staticmethod
-    def path_join(*pathes):
-        ret = [TextSubstitution(text=sep)]*(2*len(pathes)-1)
-        ret[::2] = pathes
-        return SimpleLauncher.flatten(ret)
+    def path_join(self, *pathes):
+        ret = SimpleSubstitution()
+        for elem in pathes:
+            ret /= elem
+        return self.try_perform(ret)
 
-    @staticmethod
-    def find(package, file_name, file_dir = None):
+    def find(self, package, file_name, file_dir = None):
         '''
         Retrieve the path to a file within its share directory.
 
@@ -359,7 +255,7 @@ class SimpleLauncher:
             return elem is not None and type(elem) != str
         
         if is_substitution(package) or is_substitution(file_name) or is_substitution(file_dir):
-            return SimpleLauncher.path_join(package_dir, file_dir, file_name)
+            return self.path_join(package_dir, file_dir, file_name)
 
         # below this point all arguments are strings or None
         if package_dir == None:
@@ -388,24 +284,6 @@ class SimpleLauncher:
         self.index = self.ns_graph[self.index]
         return new_entities
 
-    '''
-    # unused as of now
-    def abs_node_ns(self, node_args = {}):
-
-        ns = []
-        if 'namespace' in node_args:
-            ns.insert(0, node_args['namespace'])
-
-        index = self.index
-        while index in self.ns_graph:
-            if len(self.entities[index]):
-                head = self.entities[index][0]
-                if(type(head) == PushRosNamespace):
-                    ns.insert(0, head.namespace)
-            index = self.ns_graph[index]
-        return self.name_join(["'"], self.path_join(*ns), ["'"])
-    '''
-
     @contextmanager
     def group(self, ns=None, if_arg=None, unless_arg=None, if_condition=None, unless_condition=None):
         '''
@@ -426,6 +304,12 @@ class SimpleLauncher:
             new_entities = self.group_level_up()
 
             condition = None
+
+            # we can only deal with 1 condition
+            conditions = (if_arg, unless_arg, if_condition, unless_condition)
+            if len(conditions) - conditions.count(None) > 1:
+                raise Exception(f'SimpleLauncher groups cannot have more than 1 condition (has {len(conditions) - conditions.count(None)}')
+
             # get condition
             if if_arg is not None:
                 condition = IfCondition(self.arg(if_arg))
@@ -515,7 +399,7 @@ class SimpleLauncher:
                 plugin = '{}::{}'.format(package, plugin)
             self.entity(ComposableNode(package=package, plugin=plugin, **node_args))
 
-    def include(self, package, launch_file, launch_dir=None, launch_arguments=None):
+    def include(self, package=None, launch_file=None, launch_dir=None, launch_arguments=None):
         '''
         Include another launch file
         '''
@@ -534,16 +418,13 @@ class SimpleLauncher:
         if type(description_file) == str and description_file.endswith('urdf') and xacro_args is None:
             with open(description_file) as f:
                 urdf_xml = f.read()
-            return self.name_join("'", urdf_xml, "'")
+            return f"'{urdf_xml}'"
 
         # go for xacro output, compatible with launch parameters
-        if type(description_file) == str:
-            cmd = ['xacro ' + description_file]
-        else:
-            cmd = ['xacro '] + description_file
+        cmd = SimpleSubstitution('xacro ', description_file)
         if xacro_args is not None:
             cmd += adapt_type(xacro_args, XACRO_ARGS)
-        return self.name_join("'",Command(SimpleLauncher.name_join(*cmd)),"'")
+        return SimpleSubstitution("'", Command(cmd), "'")
 
     def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False, namespaced_tf = False, **node_args):
         '''
@@ -569,10 +450,10 @@ class SimpleLauncher:
                 frame_prefix = node_args['parameters'][0]['frame_prefix']
         else:
             node_args['parameters'] = []
-        frame_prefix = self.name_join("'", frame_prefix, "'")
+        frame_prefix = SimpleSubstitution("'", frame_prefix, "'")
 
         if prefix_gz_plugins:
-            urdf_xml = Command(SimpleLauncher.name_join(['ros2 run simple_launch frame_prefix_gazebo',
+            urdf_xml = Command(SimpleSubstitution(['ros2 run simple_launch frame_prefix_gazebo',
                                                          ' -d ', urdf_xml,
                                                          ' --frame_prefix ', frame_prefix]))
 
@@ -602,29 +483,37 @@ class SimpleLauncher:
         self.node('joint_state_publisher', parameters = node_args, condition=UnlessCondition(use_gui))
         self.node('joint_state_publisher_gui', parameters = node_args, condition=IfCondition(use_gui))
 
+
+    # Gazebo / Ignition methods
+
+    @staticmethod
+    def gz_prefix():
+        return 'ign' if SimpleLauncher.ros_version() < 'humble' else 'gz'
+
     def create_gz_bridge(self, bridges, name = 'gz_bridge'):
         '''
         Create a ros_gz_bridge::parameter_bridge with the passed GazeboBridge instances
         The bridge has a default name if not specified
-        If any bridge is used for sensor_msgs/Image, ros_ign_image will be used instead
+        If any bridge is used for sensor_msgs/Image, ros_{gz,ign}_image will be used instead
         '''
         if type(bridges) not in (list, tuple):
             bridges = [bridges]
-            
-        from os import environ
-        gz_ign = 'ros_ign' if environ['ROS_DISTRO'] in ('foxy', 'galactic') else 'ros_gz'
+        if len(bridges) == 0: return
 
-        std_config = sum([bridge.yaml for bridge in bridges if bridge.yaml is not None], [])
-        im_bridges = [bridge for bridge in bridges if bridge.yaml is None]
+        gz = self.gz_prefix()
+        ros_gz = f'ros_{gz}'
 
-        if len(std_config):
-            # use YAML-based configuration, handles Ignition topics that are invalid to ROS
+        std_config = sum([bridge.yaml(gz) for bridge in bridges if not bridge.is_image], [])
+        im_bridges = [bridge for bridge in bridges if bridge.is_image]
+
+        if std_config.has_elems():
+            # use YAML-based configuration, handles Gazebo topics that are invalid to ROS
             from tempfile import NamedTemporaryFile
             dst = NamedTemporaryFile().name
 
-            self.entity(ExecuteProcess(cmd=['echo ', self.name_join('"',std_config,'"'), ' >> ', dst],
-                                    shell=True, name=self.name_join(name, '_config')))
-            self.node(f'{gz_ign}_bridge', 'parameter_bridge', name=name,
+            self.entity(ExecuteProcess(cmd=['echo ', SimpleSubstitution('"',std_config,'"'), ' >> ', dst],
+                                    shell=True, name=SimpleSubstitution(name, '_config')))
+            self.node(f'{ros_gz}_bridge', 'parameter_bridge', name=name,
                         parameters = {'config_file':dst})
 
         if len(im_bridges):
@@ -632,17 +521,23 @@ class SimpleLauncher:
             remappings = []
             for bridge in im_bridges:
                 for ext in ('', '/compressed', '/compressedDepth', '/theora'):
-                    remappings.append((self.name_join(bridge.gz_camera,ext), self.name_join(bridge.ros_topic,ext)))
+                    remappings.append((SimpleSubstitution(bridge.gz_topic,ext), SimpleSubstitution(bridge.ros_topic,ext)))
 
-            self.node(f'{gz_ign}_image', 'image_bridge', name=self.name_join(name, '_image'),
-                      arguments = [bridge.gz_camera for bridge in im_bridges],
+            self.node(f'{ros_gz}_image', 'image_bridge', name=SimpleSubstitution(name, '_image'),
+                      arguments = [bridge.gz_topic for bridge in im_bridges],
                       remappings = remappings)
 
     def create_gz_clock_bridge(self, name = 'gz_clock_bridge'):
         '''
         Create a ros_gz_bridge::parameter_bridge for the /clock topic
+        Typically used in the launch file that runs the simulation before spawning things in
         '''
         self.create_gz_bridge(GazeboBridge.clock(), name)
+
+    def gz_launch(self):
+        if self.gz_prefix() == 'gz':
+            return self.find('ros_gz_sim', 'gz_sim.launch.py')
+        return self.find('ros_ign_gazebo', 'ign_gazebo.launch.py')
 
     def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = [], only_new = True):
         '''
@@ -650,13 +545,21 @@ class SimpleLauncher:
         Additional spawn_args can be given to specify e.g. the initial pose
         '''        
         if model_file is not None:
-            spawn_args = self.flatten(spawn_args + ['-file',model_file,'-name', name])
+            spawn_args = flatten(spawn_args + ['-file',model_file,'-name', name])
         else:        
-            spawn_args = self.flatten(spawn_args + ['-topic',topic,'-name', name])
+            spawn_args = flatten(spawn_args + ['-topic',topic,'-name', name])
 
         # spawn if not already there
+        pkg = 'ros_ign_gazebo' if self.ros_version() < 'humble' else 'ros_gz_sim'
+        node = Node(package = 'ros_ign_gazebo',
+                    executable = 'create', arguments=spawn_args)
+
         if only_new:
-            with self.group(unless_condition = GazeboBridge.has_model(name)):
-                self.node('ros_ign_gazebo','create', arguments=spawn_args)
+            if self.has_context():
+                if not GazeboBridge.has_model(name):
+                    self.entity(node)
+            else:
+                with self.group(unless_condition = GazeboBridge.has_model(name)):
+                    self.entity(node)
         else:
-            self.node('ros_ign_gazebo','create', arguments=spawn_args)
+            self.entity(node)

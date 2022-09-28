@@ -46,21 +46,25 @@ In the launch API, differents types are expected for:
 
 The `sl.include`, `sl.node` and `xacro_args` calls allow using any type (the simplest being a single dictionary)  and will convert to the one expected by the API.
 
+### `SimpleSubstution` class
+
+Most all methods listed below return an instance of `SimpleSubstitution` that wraps any Substitution, but that provides concatenation (`+`) and path concatenation (`/`) operators. It is still a `Substitution`, not a raw Python type.
+
 ## Launch arguments
 
 The helper class allows declaring launch arguments and getting them in return:
 
 ### Declare a launch argument
 
-`sl.declare_arg(name, default_value, description = None)`
+`sl.declare_arg(name, default_value, description = None)`: declare and returns the argument
 
 ### Retrieve a launch argument
 
-`sl.arg(name)`: returns the argument `name`
+`sl.arg(name)`: returns the argument `name` as a `SimpleSubstitution`
 
 ### Retrieve several arguments as a dictionary
 
-`sl.arg_map(('robot', 'x', 'y'))`: returns `{'robot': <robot arg value>, 'x': <x arg value>, 'y': <y arg value>}`
+`sl.arg_map('robot', 'x', 'y')`: returns `{'robot': <robot arg value>, 'x': <x arg value>, 'y': <y arg value>}`
 
 ## Node groups
 
@@ -82,6 +86,7 @@ Groups are created through the `with sl.group():` syntax and accepts both a name
   with sl.group(unless_condition=<some expression>):
     sl.node(package, executable)
 ```
+Only one condition can be set in a group, nested condition mst be combined first, or used in nested groups.
 
 ### From conditional arguments
 
@@ -97,7 +102,7 @@ Groups are created through the `with sl.group():` syntax and accepts both a name
 
 ```
   with sl.group(if_arg='use_gui'):
-  with sl.group(if_condition=sl.arg('use_gui'):
+  with sl.group(if_condition=sl.arg('use_gui')):
 ```
 If `if_arg` / `unless_arg` is not a string then it is considered as a `if_condition` / `unless_condition`.
 
@@ -125,6 +130,37 @@ The current `use_sim_time` setting can be retrieved through `sl.sim_time` that m
 - a Boolean launch argument, if `use_sim_time` was set to `True` or `False`
 
 In all cases, if the `use_sim_time` parameter is explicitely given to a node, it will be used instead of the `SimpleLauncher` instance one.
+
+
+## Wrapper around `OpaqueFunction`
+
+Most of the use cases can be dealt with substitutions and `with sl.group` blocs.
+In order to design more imperative launch files, the [`OpaqueFunction`](https://discourse.ros.org/t/simplifying-launch-argument-declaration-and-initialization-in-launch-files/24204) approach can be used. The main drawback is that potential errors are harder to track.
+
+To do this with `simple_launch`:
+  - the `SimpleLauncher` instance and the argument declaration should be done in the main body of your launch file.
+  - then, define a function (e.g. `launch_setup`) that takes no argument, where the logic of the launch file resides.
+  - all arguments obtained through `sl.arg` will be basic Python types, obtained from performing the substitutions.
+  - finally just export `generate_launch_description = sl.launch_description(opaque_function = launch_setup)`.
+
+Compare [`example_launch.py`](example/example_launch.py) and [`example_opaque_launch.py`](example/example_opaque_launch.py) to see the two approaches on the same logic.
+
+Note that inside an `OpaqueFunction` the if/unless idom reduces to a basic if/else:
+
+```
+# with substitutions
+with sl.group(if_arg='some_condition'):
+  # do stuff
+with sl.group(unless_arg='some_condition'):
+  # do other stuff
+
+# with opaque function
+if sl.arg('some_condition'):
+  # do stuff
+else:
+  # do other stuff
+```
+
 
 ## Interaction with Gazebo / Ignition
 
@@ -180,25 +216,30 @@ If some bridges involve `sensor_msgs/Image` then a dedicated `ros_ign_image` bri
 
 ### String / substitution concatenation
 
-The following syntax builds `<robot name>.xacro`:
+The following syntax builds the `SimpleSubstitution` corresponding to `<robot name>.xacro`:
 
-`file_name = sl.name_join(sl.arg('robot'), '.xacro')`
+`file_name = sl.arg('robot') + '.xacro'`
+
+*deprecated*: `sl.name_join(sl.arg('robot'), '.xacro')`
 
 ### Path concatenation
 
-The following syntax builds `<my_package_path>/urdf/<robot name>.xacro`:
+The following syntax builds the `SimpleSubstitution` corresponding to `<package_path>/urdf/<robot name>.xacro`:
 
 ```
-file_name = sl.name_join(sl.arg('robot'), '.xacro')
-urdf_file = sl.path_join(get_package_share_directory(package), 'urdf', file_name)
+file_name = sl.arg('robot') + '.xacro'
+urdf_file = os.path.join(get_package_share_directory(package),'urdf')/file_name
 ```
+Obviously if all the path elements are raw strings, you should use `os.path.join` all along.
+
+*deprecated*: `sl.path_join(get_package_share_directory(package), sl.arg('robot'), '.xacro')`
 
 
 ### Find a share file
 
 `path = sl.find(package, file_name, file_dir = None)` where:
 
-- `package` is the name of the package or None
+- `package` is the name of the package or `None` if `file_name` is already an absolute path
 - `file_name` is the name of the file to find
 - `file_dir` is the path inside the package
 
@@ -271,21 +312,24 @@ def generate_launch_description():
     sl = SimpleLauncher()
 
     # conditional args
-    sl.declare_arg('robot1', default_value=False, description='use robot 1')
+    sl.declare_arg('robot1', default_value=True, description='use robot 1')
     sl.declare_arg('robot2', default_value=True, description='use robot 2')
     sl.declare_arg('no_robot2', default_value=False, description='cancel use of robot 2')
-    sl.declare_arg('rviz', default_value=False, description='Bringup RViz2')
+    sl.declare_arg('rviz', default_value=True, description='Bringup RViz2')
 
     # numeric args
     sl.declare_arg('robot2_x', default_value=1, description='x-offset of robot 2')
     sl.declare_arg('robot2_y', default_value=1, description='y-offset of robot 2')
 
     with sl.group(if_arg='robot1'):
-        sl.include('simple_launch', 'included_launch.py', launch_arguments = [('prefix', 'robot1')])
+        sl.include('simple_launch', 'included_launch.py',
+                   launch_arguments = {'prefix': 'robot1'})
 
     with sl.group(if_arg='robot2'):
+
         with sl.group(unless_arg='no_robot2'):
-            args = {'prefix': 'robot2', 'x': sl.arg('robot2_x'), 'y': sl.arg('robot2_y')}
+
+            args = {'prefix': 'robot2', 'x':sl.arg('robot2_x'), 'y': sl.arg('robot2_y')}
             sl.include('simple_launch', 'included_launch.py', launch_arguments=args)
 
     with sl.group(if_arg='rviz'):
@@ -294,6 +338,58 @@ def generate_launch_description():
 
     return sl.launch_description()
 ```
+
+### Conditions with OpaqueFunction
+
+The file below does the same as the previous one, but using an `OpaqueFunction`:
+
+```
+from simple_launch import SimpleLauncher
+
+# declare simple launcher and the launch arguments in the main body
+sl = SimpleLauncher()
+
+# conditional args
+sl.declare_arg('robot1', default_value=True, description='use robot 1')
+sl.declare_arg('robot2', default_value=True, description='use robot 2')
+sl.declare_arg('no_robot2', default_value=False, description='cancel use of robot 2')
+sl.declare_arg('rviz', default_value=True, description='Bringup RViz2')
+
+# numeric args
+sl.declare_arg('robot2_x', default_value=1, description='x-offset of robot 2')
+sl.declare_arg('robot2_y', default_value=1, description='y-offset of robot 2')
+
+# string args
+sl.declare_arg('included', default_value = 'included_launch')
+
+
+# define the opaque function, context will be wrapped in the SimpleLauncher instance
+def launch_setup():
+
+    # we can use raw if as `robot1` argument is performed to a Boolean
+    if sl.arg('robot1'):
+        sl.include('simple_launch', 'included_launch.py', launch_arguments = {'prefix': 'robot1'})
+
+    # and even combine conditions
+    if sl.arg('robot2') and not sl.arg('no_robot2'):
+
+            args = {'prefix': 'robot2', 'x':sl.arg('robot2_x'), 'y': sl.arg('robot2_y')}
+            # summing up args and strings
+            sl.include('simple_launch', sl.arg('included') + '.py', launch_arguments=args)
+
+    if sl.arg('rviz'):
+        rviz_config = sl.find('simple_launch', 'turret.rviz')
+        sl.node('rviz2', 'rviz2', arguments = ['-d', rviz_config])
+
+    return sl.launch_description()
+
+
+# wrap the opaque_function in the launch description
+# /!\ no `def generate_launch_description():`
+
+generate_launch_description = sl.launch_description(opaque_function = launch_setup)
+```
+
 
 ### Composition
 
