@@ -1,7 +1,7 @@
 # simple_launch
 This package provides a Python class to help writing ROS 2 launch files.
 
-The motivation behind this package is that the ROS 2 launch Python syntax may not be suited for many simple cases such as running basic nodes, spawning a `robot_state_publisher`, and grouping nodes in namespaces or components..
+The motivation behind this package is that the ROS 2 launch Python syntax may not be suited for many simple cases such as running basic nodes, spawning a `robot_state_publisher`, and grouping nodes in namespaces or components.
 
 **Thanks**: this package is inspired by [ros2_launch_util](https://github.com/bponsler/ros2_launch_util).
 
@@ -68,7 +68,7 @@ The helper class allows declaring launch arguments and getting them in return:
 
 ## Node groups
 
-Groups are created through the `with sl.group():` syntax and accepts both a namespace and/or an if/unless condition:
+Groups are created through the `with sl.group():` syntax and accept both a namespace and/or an if/unless condition:
 
 ### By namespace
 
@@ -86,7 +86,7 @@ Groups are created through the `with sl.group():` syntax and accepts both a name
   with sl.group(unless_condition=<some expression>):
     sl.node(package, executable)
 ```
-Only one condition can be set in a group, nested condition mst be combined first, or used in nested groups.
+Only one condition can be set in a group, nested condition must be combined first, or used in nested groups.
 
 ### From conditional arguments
 
@@ -165,6 +165,16 @@ else:
 ## Interaction with Gazebo / Ignition
 
 *Note: Ignition being renamed to Gazebo, all tools in this section use Gazebo / gz names*
+
+An effort was made to be robust to Ignition versus Gazebo uses, i.e. *ign* prefix is used for `foxy` and `galactic` while *gz* prefix is used from *humble*.
+
+### Launch Gazebo
+
+The Gazebo launch file corresponding to the current ROS 2 distribution is obtained with:
+```
+sl.include(launch_file = sl.gz_launch(), launch_argument = ...)
+```
+Namely, it will redirect to either `ros_ign_gazebo/ign_gazebo.launch.py` (`foxy`, `galactic`) or `ros_gz_sim/gz_sim.launch.py` (`humble`+)
 
 ### Spawn a model
 
@@ -290,7 +300,7 @@ def generate_launch_description():
     sl.declare_arg('y', default_value = 0, description='y-offset of the robot')
     sl.declare_arg('use_gui', default_value = True, description='Use JSP gui')
 
-    xacro_args = sl.arg_map(('prefix', 'x', 'y'))
+    xacro_args = sl.arg_map('prefix', 'x', 'y')
     xacro_args['prefix'] = [xacro_args['prefix'], ':']
 
     with sl.group(ns=sl.arg('prefix')):
@@ -411,7 +421,7 @@ def generate_launch_description():
 
 ### auto sim time
 
-Here we run Ignition and force all other nodes to `use_sim_time:=True`, unless this file is included from another one with `use_sim_time:=False`.
+Here we run Gazebo and force all other nodes to `use_sim_time:=True`, unless this file is included from another one with `use_sim_time:=False`.
 This is unlikely as this launch file spawns a simulator.
 
 ```
@@ -423,7 +433,7 @@ def generate_launch_description():
     sl = SimpleLauncher(use_sim_time=True)
 
     # run Gazebo + clock bridge
-    sl.include('ros_ign_gazebo','ign_gazebo.launch.py',launch_arguments={'''some sdf world'''}})
+    sl.include(launch_file = sl.gz_launch(), launch_arguments={'''some sdf world'''}})
     sl.create_gz_clock_bridge()
 
     # run other nodes with sim time
@@ -434,7 +444,7 @@ def generate_launch_description():
 
 ### Robot description and conditionnal Gazebo bridge
 
-The file below only runs by default a `robot_state_publisher` with `use_sim_time=False`.
+The file below only runs by default a `robot_state_publisher` with `use_sim_time:=False`.
 However, if it is included from another file with `use_sim_time:=True` then it also spawns the robot into Gazebo and run two bridges for joint states and pose.
 
 ```
@@ -455,18 +465,18 @@ def generate_launch_description():
         with sl.group(if_condition = sl.sim_time):
             # only execute this group if use_sim_time was set to True
 
-            # spawn in Ignition at default pose if not already here
+            # spawn in Gazebo at default pose if not already here
             # uses GazeboBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
             sl.spawn_gz_model(robot)
 
             # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state
             # note the relative ROS topic 'joint_states' that is actually namespaced
-            gz_js_topic = sl.name_join(GazeboBridge.model_prefix(robot), '/joint_state')
+            gz_js_topic = GazeboBridge.model_prefix(robot)/'joint_state'
             js_bridge = GazeboBridge(gz_js_topic, 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros)
 
             # pose publisher bridge @ /model/<robot>
-            pose_bridge = GazeboBridge(sl.name_join('/model/', robot, '/pose'),
-                                            'pose_gt', 'geometry_msgs/Pose', GazeboBridge.gz2ros)
+            pose_bridge = GazeboBridge('/model'/robot/'/pose',
+                                       'pose_gt', 'geometry_msgs/Pose', GazeboBridge.gz2ros)
 
             # create bridge node with these two topics with default name gz_bridge
             sl.create_gz_bridge([js_bridge, pose_bridge])
