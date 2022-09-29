@@ -316,9 +316,9 @@ class SimpleLauncher:
             elif unless_arg is not None:
                 condition = UnlessCondition(self.arg(unless_arg))
             elif if_condition is not None:
-                condition = IfCondition(if_condition)
+                condition = IfCondition(SimpleSubstitution(if_condition))
             elif unless_condition is not None:
-                condition = UnlessCondition(unless_condition)
+                condition = UnlessCondition(SimpleSubstitution(unless_condition))
             # add new entities as sub-group
             self.entity(GroupAction(new_entities, condition=condition))
 
@@ -551,8 +551,7 @@ class SimpleLauncher:
 
         # spawn if not already there
         pkg = 'ros_ign_gazebo' if self.ros_version() < 'humble' else 'ros_gz_sim'
-        node = Node(package = 'ros_ign_gazebo',
-                    executable = 'create', arguments=spawn_args)
+        node = Node(package = pkg, executable = 'create', arguments=spawn_args)
 
         if only_new:
             if self.has_context():

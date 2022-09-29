@@ -15,6 +15,9 @@ def flatten(nested):
     return [elem for elem in nested if elem is not None]
     return filter(lambda elem: elem is not None, self.__subs)
 
+def is_basic(elem):
+    return isinstance(elem, (Text, bool, int, float))
+
 class SimpleSubstitution(Substitution):
     '''
     A container for other substitutions that provides concatenation (+) and path building (/) operators
@@ -35,10 +38,10 @@ class SimpleSubstitution(Substitution):
         return flatten(self.__subs)
 
     def describe(self) -> Text:
-        return '{}'.format(' + '.join(sub if isinstance(sub, Text) else sub.describe() for sub in self.substitutions()))
+        return '{}'.format(' + '.join(str(sub) if is_basic(sub) else sub.describe() for sub in self.substitutions()))
 
     def perform(self, context: LaunchContext) -> Text:
-        return ''.join(sub if isinstance(sub, Text) else sub.perform(context) for sub in self.substitutions())
+        return ''.join(str(sub) if is_basic(sub) else sub.perform(context) for sub in self.substitutions())
 
     def __add__(self, other):
         return SimpleSubstitution([self.__subs, other])
