@@ -170,11 +170,12 @@ An effort was made to be robust to Ignition versus Gazebo uses, i.e. *ign* prefi
 
 ### Launch Gazebo
 
-The Gazebo launch file corresponding to the current ROS 2 distribution is obtained with:
+The Gazebo launch file corresponding to the current ROS 2 distribution is launched with
 ```
-sl.include(launch_file = sl.gz_launch(), launch_argument = ...)
+sl.gz_launch(gz_arguments)
 ```
-Namely, it will redirect to either `ros_ign_gazebo/ign_gazebo.launch.py` (`foxy`, `galactic`) or `ros_gz_sim/gz_sim.launch.py` (`humble`+)
+Namely, it will redirect to either `ros_ign_gazebo/ign_gazebo.launch.py` (`foxy`, `galactic`) or `ros_gz_sim/gz_sim.launch.py` (`humble`+).
+The given `gz_arguments`, if any, will be forwarded either as the `ign_args` or `gz_args`, accordingly.
 
 ### Spawn a model
 
@@ -433,7 +434,7 @@ def generate_launch_description():
     sl = SimpleLauncher(use_sim_time=True)
 
     # run Gazebo + clock bridge
-    sl.include(launch_file = sl.gz_launch(), launch_arguments={'''some sdf world'''}})
+    sl.gz_launch(f'-r {<path/to/some/sdf/world>}')
     sl.create_gz_clock_bridge()
 
     # run other nodes with sim time

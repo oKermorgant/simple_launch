@@ -385,8 +385,16 @@ class SimpleLauncher:
             if 'parameters' in node_args:
                 if type(node_args['parameters'][0]) == dict and 'use_sim_time' not in node_args['parameters'][0]:
                     node_args['parameters'][0]['use_sim_time'] = self.sim_time
+                elif type(node_args['parameters'][0]) == str:
+                    # yaml-file, check if it contains use_sim_time
+                    config_file = node_args['parameters'][0]
+                    if exists(config_file):
+                        with open(config_file) as f:
+                            config = f.read().splitlines()
+                        if not any(line.strip().startswith('use_sim_time') for line in config):
+                            node_args['parameters'].append({'use_sim_time':  self.sim_time})
                 else:
-                    print('Cannot update node params, unknown type',node_args['parameters'])
+                    print('simple_launch: skipping use_sim_time for node', f'{package}/{executable}', 'cannot check if already here')
                     #node_args['parameters'] += [{'use_sim_time': self.sim_time}]
             else:
                 node_args['parameters'] = [{'use_sim_time':  self.sim_time}]
@@ -534,10 +542,18 @@ class SimpleLauncher:
         '''
         self.create_gz_bridge(GazeboBridge.clock(), name)
 
-    def gz_launch(self):
+    def gz_launch(self, gz_args = None):
+
         if self.gz_prefix() == 'gz':
-            return self.find('ros_gz_sim', 'gz_sim.launch.py')
-        return self.find('ros_ign_gazebo', 'ign_gazebo.launch.py')
+            launch_file = self.find('ros_gz_sim', 'gz_sim.launch.py')
+            launch_args = 'gz_args'
+        else:
+            launch_file = self.find('ros_ign_gazebo', 'ign_gazebo.launch.py')
+            launch_args = 'ign_args'
+        if gz_args is None:
+            self.include(launch_file = launch_file)
+        else:
+            self.include(launch_file = launch_file, launch_arguments = {launch_args: gz_args})
 
     def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = [], only_new = True):
         '''
