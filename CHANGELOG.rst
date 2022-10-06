@@ -2,6 +2,17 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* check use_sim_time versus a parameter file
+* resolve any builtin type as Substitution, not only text
+* improve documentation
+* Gazebo + humble compat
+* OpaqueFunction wrapper and SimpleSubstitution
+* switch to CMake to avoid deprecation messages
+* more spawn_gz
+* Contributors: Olivier Kermorgant
+
 1.5.0 (2022-08-26)
 ------------------
 * allow spawning a Gz model from file
