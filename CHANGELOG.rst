@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.0 (2022-10-06)
+------------------
 * check use_sim_time versus a parameter file
 * resolve any builtin type as Substitution, not only text
 * improve documentation
