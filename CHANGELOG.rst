@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* fix bug in robot_state_publisher with raw URDF
+* Contributors: Olivier Kermorgant
+
 1.6.0 (2022-10-06)
 ------------------
 * check use_sim_time versus a parameter file
