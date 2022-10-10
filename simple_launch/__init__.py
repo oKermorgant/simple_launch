@@ -426,7 +426,7 @@ class SimpleLauncher:
         if type(description_file) == str and description_file.endswith('urdf') and xacro_args is None:
             with open(description_file) as f:
                 urdf_xml = f.read()
-            return f"'{urdf_xml}'"
+            return urdf_xml
 
         # go for xacro output, compatible with launch parameters
         cmd = SimpleSubstitution('xacro ', description_file)
