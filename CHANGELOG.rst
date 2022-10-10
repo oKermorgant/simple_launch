@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.1 (2022-10-10)
+------------------
 * fix bug in robot_state_publisher with raw URDF
 * Contributors: Olivier Kermorgant
 
