@@ -1,11 +1,13 @@
 from .simple_substitution import SimpleSubstitution
 
+
 def only_show_args():
     '''
     Returns True if the launch file was launched only to show its arguments
     '''
     import sys
     return any(show_arg in sys.argv for show_arg in ('-s', '--show-args', '--show-arguments'))
+
 
 def silent_exec(cmd):
     '''
@@ -20,6 +22,7 @@ def silent_exec(cmd):
         return check_output(cmd, stderr=STDOUT).decode().splitlines()
     except:
         return []
+
 
 class GazeboBridge:
     gz2ros = '['
@@ -58,7 +61,6 @@ class GazeboBridge:
  'sensor_msgs/msg/PointCloud2': 'ignition.msgs.PointCloudPacked',
  'tf2_msgs/msg/TFMessage': 'ignition.msgs.Pose_V',
  'trajectory_msgs/msg/JointTrajectory': 'ignition.msgs.JointTrajectory'}
-
 
     @staticmethod
     def read_models():

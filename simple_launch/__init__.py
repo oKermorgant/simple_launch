@@ -1,25 +1,21 @@
-from os.path import basename, exists, join, splitext, exists, sep
-
-from imp import load_source
-
-from ros2run.api import get_executable_path
+from os.path import join, exists
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription, Substitution
 from launch_ros.actions import Node, PushRosNamespace, ComposableNodeContainer, LoadComposableNodes
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, ExecuteProcess, TimerAction
+from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, ExecuteProcess
 from launch.launch_description_sources import AnyLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, TextSubstitution, PythonExpression
+from launch.substitutions import LaunchConfiguration, Command, PythonExpression
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.descriptions import ComposableNode
 from contextlib import contextmanager
-import sys
 from .simple_substitution import SimpleSubstitution, flatten
-from .gazebo import *
-from typing import List, Text
+from .gazebo import only_show_args, silent_exec, GazeboBridge
+from typing import Text
 
 NODE_REMAPS = LAUNCH_ARGS = 1
 NODE_PARAMS = 2
 XACRO_ARGS = 3
+
 
 def adapt_type(params, target):
     # detect type of passed params and adapts to launch API
@@ -49,7 +45,7 @@ def adapt_type(params, target):
 
     if type(params) in (list, tuple):
 
-        if all(type(elem)==dict for elem in params):
+        if all(type(elem) == dict for elem in params):
             # to dict
             return adapt_type(dict(key_val for elem in params for key_val in elem.items()), target)
 
@@ -61,6 +57,7 @@ def adapt_type(params, target):
             return adapt_type(dict(params), target)
 
     return params
+
 
 class SimpleLauncher:
 
@@ -132,6 +129,9 @@ class SimpleLauncher:
 
     @staticmethod
     def ros_version():
+        '''
+        Returns the name of the currently sourced ros version (e.g. $ROS_VERSION)
+        '''
         from os import environ
         return environ['ROS_DISTRO']
 
@@ -180,7 +180,7 @@ class SimpleLauncher:
             return self.entities[0] if self.has_context() else LaunchDescription(self.entities[0])
 
         if self.has_context():
-            raise Exception(f'Calling SimpleLauncher.launch_description with opaque function within an opaque function')
+            raise Exception('Calling SimpleLauncher.launch_description with opaque function within an opaque function')
 
         from launch.actions import OpaqueFunction
 
@@ -227,7 +227,7 @@ class SimpleLauncher:
         '''
         Generate arguments corresponding to Gazebo spawner
         '''
-        axes={'x': 'x', 'y': 'y', 'z': 'z', 'roll': 'R', 'pitch': 'P', 'yaw': 'Y'}
+        axes = {'x': 'x', 'y': 'y', 'z': 'z', 'roll': 'R', 'pitch': 'P', 'yaw': 'Y'}
         return [['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes]
 
     def path_join(self, *pathes):
@@ -236,12 +236,12 @@ class SimpleLauncher:
             ret /= elem
         return self.try_perform(ret)
 
-    def find(self, package, file_name, file_dir = None):
+    def find(self, package, file_name=None, file_dir = None):
         '''
         Retrieve the path to a file within its share directory.
 
         * package -- name of the package, if None then assumes an absolute file path
-        * file_name -- name of the file to find
+        * file_name -- name of the file to find (if None, returns the path to this package)
         * file_dir -- package directory containing the file (if None, will search the file)
 
         If any argument is neither string nore None, assumes use of parameters and returns the corresponding Substitution
@@ -249,6 +249,9 @@ class SimpleLauncher:
 
         # resolve package
         package_dir = get_package_share_directory(package) if package else None
+
+        if file_name is None:
+            return package_dir
 
         # deal with non-resolvable package - cannot find anything in there
         def is_substitution(elem):
@@ -258,7 +261,7 @@ class SimpleLauncher:
             return self.path_join(package_dir, file_dir, file_name)
 
         # below this point all arguments are strings or None
-        if package_dir == None:
+        if package_dir is None:
             return file_name
 
         # do not look for it, it's (said to be) there
@@ -322,7 +325,6 @@ class SimpleLauncher:
             # add new entities as sub-group
             self.entity(GroupAction(new_entities, condition=condition))
 
-
     @contextmanager
     def container(self, name, namespace = '', existing = False, package='rclcpp_components', executable='component_container', **container_args):
         '''
@@ -355,7 +357,6 @@ class SimpleLauncher:
                 executable=executable,
                 composable_node_descriptions=new_entities,
                 **container_args))
-
 
     def entity(self, entity):
         '''
@@ -392,12 +393,12 @@ class SimpleLauncher:
                         with open(config_file) as f:
                             config = f.read().splitlines()
                         if not any(line.strip().startswith('use_sim_time') for line in config):
-                            node_args['parameters'].append({'use_sim_time':  self.sim_time})
+                            node_args['parameters'].append({'use_sim_time': self.sim_time})
                 else:
                     print('simple_launch: skipping use_sim_time for node', f'{package}/{executable}', 'cannot check if already here')
-                    #node_args['parameters'] += [{'use_sim_time': self.sim_time}]
+#                    #node_args['parameters'] += [{'use_sim_time': self.sim_time}]
             else:
-                node_args['parameters'] = [{'use_sim_time':  self.sim_time}]
+                node_args['parameters'] = [{'use_sim_time': self.sim_time}]
 
         if not self.composed:
             self.entity(Node(package=package, executable=executable, **node_args))
@@ -415,6 +416,15 @@ class SimpleLauncher:
         self.entity(IncludeLaunchDescription(
             AnyLaunchDescriptionSource(launch_file),
             launch_arguments=adapt_type(launch_arguments, LAUNCH_ARGS)))
+
+    def rviz(self, config_file = None, warnings = False):
+        '''
+        Runs RViz with the given config file and warning level
+        '''
+        args = [] if config_file is None else ['-d', config_file]
+        if not warnings:
+            args += ['--ros-args', '--log-level', 'FATAL']
+        self.node('rviz2', 'rviz2', arguments = args)
 
     def robot_description(self, package=None, description_file=None, description_dir=None, xacro_args=None):
         '''
@@ -434,7 +444,8 @@ class SimpleLauncher:
             cmd += adapt_type(xacro_args, XACRO_ARGS)
         return SimpleSubstitution("'", Command(cmd), "'")
 
-    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False, namespaced_tf = False, **node_args):
+    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False,
+                              namespaced_tf = False, **node_args):
         '''
         Add a robot state publisher node to the launch tree using the given description (urdf / xacro) file.
 
@@ -491,8 +502,7 @@ class SimpleLauncher:
         self.node('joint_state_publisher', parameters = node_args, condition=UnlessCondition(use_gui))
         self.node('joint_state_publisher_gui', parameters = node_args, condition=IfCondition(use_gui))
 
-
-    # Gazebo / Ignition methods
+# Gazebo / Ignition methods
 
     @staticmethod
     def gz_prefix():
@@ -506,7 +516,8 @@ class SimpleLauncher:
         '''
         if type(bridges) not in (list, tuple):
             bridges = [bridges]
-        if len(bridges) == 0: return
+        if len(bridges) == 0:
+            return
 
         gz = self.gz_prefix()
         ros_gz = f'ros_{gz}'
@@ -522,7 +533,7 @@ class SimpleLauncher:
             self.entity(ExecuteProcess(cmd=['echo ', SimpleSubstitution('"',std_config,'"'), ' >> ', dst],
                                     shell=True, name=SimpleSubstitution(name, '_config')))
             self.node(f'{ros_gz}_bridge', 'parameter_bridge', name=name,
-                        parameters = {'config_file':dst})
+                        parameters = {'config_file': dst})
 
         if len(im_bridges):
             # use remapping to ROS topics
@@ -559,10 +570,10 @@ class SimpleLauncher:
         '''
         Spawns a model into Gazebo under the given name, from the given topic or file
         Additional spawn_args can be given to specify e.g. the initial pose
-        '''        
+        '''
         if model_file is not None:
             spawn_args = flatten(spawn_args + ['-file',model_file,'-name', name])
-        else:        
+        else:
             spawn_args = flatten(spawn_args + ['-topic',topic,'-name', name])
 
         # spawn if not already there

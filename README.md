@@ -166,7 +166,7 @@ else:
 
 *Note: Ignition being renamed to Gazebo, all tools in this section use Gazebo / gz names*
 
-An effort was made to be robust to Ignition versus Gazebo uses, i.e. *ign* prefix is used for `foxy` and `galactic` while *gz* prefix is used from *humble*.
+An effort was made to be robust to Ignition versus Gazebo uses, i.e. *ign* prefix is used for `foxy` and `galactic` while *gz* prefix is used from `humble`.
 
 ### Launch Gazebo
 
@@ -221,7 +221,7 @@ An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>,
 The Gazebo message type is deduced from the ros message type. Remapping will be set to the given `ros_topic`.
 
 The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
-If some bridges involve `sensor_msgs/Image` then a dedicated `ros_ign_image` bridge will be used.
+If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used.
 
 ## Other shortcuts
 
@@ -248,13 +248,15 @@ Obviously if all the path elements are raw strings, you should use `os.path.join
 
 ### Find a share file
 
-`path = sl.find(package, file_name, file_dir = None)` where:
+`path = sl.find(package, file_name = None, file_dir = None)` where:
 
 - `package` is the name of the package or `None` if `file_name` is already an absolute path
 - `file_name` is the name of the file to find
 - `file_dir` is the path inside the package
 
 If `file_dir` is `None` then the `find` function will actually look for the file inside the package share, assuming that `package` and `file_name` are raw strings.
+
+If `file_name` is `None` then the function just returns the path to the package share directory (e.g. `get_package_share_directory(package)`)
 
 ### Robot state publisher
 
@@ -269,6 +271,11 @@ If `file_dir` is `None` then the `find` function will actually look for the file
 ### Joint state publisher
 
 `sl.joint_state_publisher(use_gui, **node_args)`: fires up a `joint_state_publisher`, with or without the gui.
+
+### Rviz
+
+`sl.rviz(config_file = None, warnings = False)`: runs RViz on the given configuration file. If `warnings` is `False` (default) then runs with `log-level FATAL` in order to avoid many messages in the console.
+
 
 ### Fallback to low-level syntax
 
