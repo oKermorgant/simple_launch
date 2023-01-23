@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.6.2 (2023-01-23)
+------------------
 * add .rviz shortcut, clean Python scripts
 * Contributors: Olivier Kermorgant
 
