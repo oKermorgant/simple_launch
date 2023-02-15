@@ -72,7 +72,7 @@ class SimpleLauncher:
         self.ns_graph = {0: -1}
         self.composed = False
         self.sim_time = None
-        self.gz_axes = []
+        self.gz_axes = ('x','y','z','yaw','pitch','roll')
         self.__context = None
 
         if namespace:
@@ -442,7 +442,7 @@ class SimpleLauncher:
         cmd = SimpleSubstitution('xacro ', description_file)
         if xacro_args is not None:
             cmd += adapt_type(xacro_args, XACRO_ARGS)
-        return SimpleSubstitution("'", Command(cmd), "'")
+        return SimpleSubstitution("'", Command(cmd,on_stderr='warn'), "'")
 
     def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False,
                               namespaced_tf = False, **node_args):
@@ -508,7 +508,7 @@ class SimpleLauncher:
     def gz_prefix():
         return 'ign' if SimpleLauncher.ros_version() < 'humble' else 'gz'
 
-    def create_gz_bridge(self, bridges, name = 'gz_bridge'):
+    def create_gz_bridge(self, bridges: list[GazeboBridge], name = 'gz_bridge'):
         '''
         Create a ros_gz_bridge::parameter_bridge with the passed GazeboBridge instances
         The bridge has a default name if not specified
@@ -522,8 +522,24 @@ class SimpleLauncher:
         gz = self.gz_prefix()
         ros_gz = f'ros_{gz}'
 
-        std_config = sum([bridge.yaml(gz) for bridge in bridges if not bridge.is_image], [])
+        # add camera_info for image bridges
         im_bridges = [bridge for bridge in bridges if bridge.is_image]
+
+        for bridge in im_bridges:
+            gz_head, gz_tail = bridge.gz_topic.split_tail()
+            ros_head, ros_tail = bridge.ros_topic.split_tail()
+
+            if not all(isinstance(tail, Text) and 'image' in tail for tail in (ros_tail, gz_tail)):
+                continue
+
+            cam = []
+            for tail in (gz_tail, ros_tail):
+                idx = tail.rfind('/image')
+                cam.append(tail[:idx] + '/camera_info')
+
+            bridges.append(GazeboBridge(gz_head + [cam[0]], ros_head + [cam[1]], 'sensor_msgs/CameraInfo', GazeboBridge.gz2ros))
+
+        std_config = sum([bridge.yaml(gz) for bridge in bridges if not bridge.is_image], [])
 
         if std_config.has_elems():
             # use YAML-based configuration, handles Gazebo topics that are invalid to ROS

@@ -73,7 +73,7 @@ class GazeboBridge:
             print('\033[93mThis launch file will request information on a running Gazebo instance at the time of the launch\033[0m')
             return
 
-        # TODO adapt to gz vs ig
+        # TODO adapt to gz vs ign
         models = silent_exec('ign model --list')
         for line in models:
             if line.startswith('Requesting'):
@@ -102,8 +102,8 @@ class GazeboBridge:
             print(f'Cannot build ros <-> gz bridge with direction "{direction}": should be in {{[,],@}}')
             return
 
-        self.gz_topic = gz_topic
-        self.ros_topic = ros_topic
+        self.gz_topic = SimpleSubstitution(gz_topic)
+        self.ros_topic = SimpleSubstitution(ros_topic)
 
         # Images with gz2ros use ros_ign_image bridge
         if msg == 'sensor_msgs/msg/Image':

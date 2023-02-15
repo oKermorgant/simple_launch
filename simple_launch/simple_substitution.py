@@ -1,8 +1,8 @@
 from launch import Substitution
-from launch.substitutions import TextSubstitution
 from launch.launch_context import LaunchContext
 from typing import Text, List, Tuple
 from os.path import sep
+
 
 def flatten(nested):
     try:
@@ -13,10 +13,11 @@ def flatten(nested):
     except IndexError:
         pass
     return [elem for elem in nested if elem is not None]
-    return filter(lambda elem: elem is not None, self.__subs)
+
 
 def is_basic(elem):
     return isinstance(elem, (Text, bool, int, float))
+
 
 class SimpleSubstitution(Substitution):
     '''
@@ -29,6 +30,15 @@ class SimpleSubstitution(Substitution):
 
     def has_elems(self) -> bool:
         return len(self.__subs) > 0
+
+    def split_tail(self) -> tuple:
+        if not self.has_elems():
+            return [],None
+        subs = self.substitutions()
+        if isinstance(subs[-1], SimpleSubstitution):
+            head, tail = subs[-1].split_tail()
+            return subs[:-1]+head, tail
+        return subs[:-1], subs[-1]
 
     @staticmethod
     def is_none(elem) -> bool:

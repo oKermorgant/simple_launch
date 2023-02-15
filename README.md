@@ -221,7 +221,7 @@ An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>,
 The Gazebo message type is deduced from the ros message type. Remapping will be set to the given `ros_topic`.
 
 The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
-If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used.
+If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used. The corresponding `camera_info` topic will be automatically bridged.
 
 ## Other shortcuts
 
