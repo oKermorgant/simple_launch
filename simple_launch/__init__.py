@@ -201,10 +201,9 @@ class SimpleLauncher:
         '''
         Returns the performed value if the context is defined, otherwise the substitution
         '''
-        if isinstance(substitution, Text):
+        if isinstance(substitution, Text) or not self.has_context():
             return substitution
-        if not self.has_context():
-            return substitution
+
         from ast import literal_eval
         performed = substitution.perform(self.__context)
         try:
@@ -529,7 +528,7 @@ class SimpleLauncher:
             gz_head, gz_tail = bridge.gz_topic.split_tail()
             ros_head, ros_tail = bridge.ros_topic.split_tail()
 
-            if not all(isinstance(tail, Text) and 'image' in tail for tail in (ros_tail, gz_tail)):
+            if not all(isinstance(tail, Text) and '/image' in tail for tail in (ros_tail, gz_tail)):
                 continue
 
             cam = []
