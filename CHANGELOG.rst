@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.7.0 (2023-02-22)
+------------------
 * GazeboBridge creates a camera_info topic for all bridged image topics
 * Contributors: Olivier Kermorgant
 
