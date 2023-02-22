@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* GazeboBridge creates a camera_info topic for all bridged image topics
+* Contributors: Olivier Kermorgant
+
 1.6.2 (2023-01-23)
 ------------------
 * add .rviz shortcut, clean Python scripts
