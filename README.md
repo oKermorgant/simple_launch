@@ -35,6 +35,17 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 - `launch_dir` is its directory inside the package share (`None` to have it found)
 - `launch_arguments` is a list of arguments to pass to the included launch file
 
+### Call a service at launch
+
+This line runs a temporary client that wait for a service and calls it when available:
+
+`sl.service(server, request = None)` where
+
+- server is the path to some service
+- request is a dictionary representing the service request. If `None` or incomplete, will use the service request default values.
+
+The service type is deduced when it becomes available.
+
 ### Robust types for parameters
 
 In the launch API, differents types are expected for:

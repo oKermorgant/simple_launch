@@ -17,17 +17,17 @@ NODE_PARAMS = 2
 XACRO_ARGS = 3
 
 
+def stringify(arg):
+    if isinstance(arg, (str, Substitution, list)):
+        return arg
+    return str(arg)
+
+
 def adapt_type(params, target):
     # detect type of passed params and adapts to launch API
     # NODE_PARAMS expects a list with 1 or several dict
     # NODE_REMAPS and LAUNCH_ARGS expect a list of (key,value) tuples
     # XACRO_ARGS expect a single string of key:=value
-
-    def stringify(arg):
-        if isinstance(arg, (str, Substitution, list)):
-            return arg
-        return str(arg)
-
     if type(params) == dict:
         if target == NODE_PARAMS:
             return [params]
@@ -227,7 +227,8 @@ class SimpleLauncher:
         Generate arguments corresponding to Gazebo spawner
         '''
         axes = {'x': 'x', 'y': 'y', 'z': 'z', 'roll': 'R', 'pitch': 'P', 'yaw': 'Y'}
-        return [['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes]
+        args = flatten([['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes])
+        return [stringify(arg) for arg in args]
 
     def path_join(self, *pathes):
         ret = SimpleSubstitution()
@@ -416,6 +417,17 @@ class SimpleLauncher:
             AnyLaunchDescriptionSource(launch_file),
             launch_arguments=adapt_type(launch_arguments, LAUNCH_ARGS)))
 
+    def service(self, server, request = None):
+        '''
+        Wrapper around service call.
+        Calls the service at server address after checking its type.
+        Request is a dictionary that is forwarded to service request fields, assuming they match
+        '''
+        if request is not None:
+            self.node('simple_launch', 'service_wrapper', parameters = [{'server':server}, request])
+        else:
+            self.node('simple_launch', 'service_wrapper', parameters = [{'server':server}])
+
     def rviz(self, config_file = None, warnings = False):
         '''
         Runs RViz with the given config file and warning level
@@ -569,17 +581,19 @@ class SimpleLauncher:
         self.create_gz_bridge(GazeboBridge.clock(), name)
 
     def gz_launch(self, gz_args = None):
+        '''
+        Wraps gz_sim_launch to be Ignition/GzSim agnostic
+        default version is Fortress (6), will use GZ_VERSION if present
+        '''
 
         if self.gz_prefix() == 'gz':
             launch_file = self.find('ros_gz_sim', 'gz_sim.launch.py')
-            launch_args = 'gz_args'
+            launch_arguments = {'gz_args': gz_args}
         else:
             launch_file = self.find('ros_ign_gazebo', 'ign_gazebo.launch.py')
-            launch_args = 'ign_args'
-        if gz_args is None:
-            self.include(launch_file = launch_file)
-        else:
-            self.include(launch_file = launch_file, launch_arguments = {launch_args: gz_args})
+            launch_arguments = {'ign_args': gz_args}
+
+        self.include(launch_file = launch_file, launch_arguments = launch_arguments)
 
     def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = [], only_new = True):
         '''
@@ -590,6 +604,9 @@ class SimpleLauncher:
             spawn_args = flatten(spawn_args + ['-file',model_file,'-name', name])
         else:
             spawn_args = flatten(spawn_args + ['-topic',topic,'-name', name])
+
+        if '-world' not in spawn_args:
+            spawn_args += ['-world', GazeboBridge.world()]
 
         # spawn if not already there
         pkg = 'ros_ign_gazebo' if self.ros_version() < 'humble' else 'ros_gz_sim'

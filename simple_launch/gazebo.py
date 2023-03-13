@@ -73,8 +73,18 @@ class GazeboBridge:
             print('\033[93mThis launch file will request information on a running Gazebo instance at the time of the launch\033[0m')
             return
 
-        # TODO adapt to gz vs ign
-        models = silent_exec('ign model --list')
+        # GZ / IGN get world: look for a clue in compilation flag, otherwise try both
+        from os import environ
+        for key in ('GZ_VERSION', 'IGNITION_VERSION'):
+            if key in environ:
+                if environ[key] == 'fortress':
+                    models = silent_exec('ign model --list')
+                else:
+                    models = silent_exec('gz model --list')
+                break
+        else:
+            models = silent_exec('ign model --list') + silent_exec('gz model --list')
+
         for line in models:
             if line.startswith('Requesting'):
                 GazeboBridge.world_name = line.replace(']','[').split('[')[1]
