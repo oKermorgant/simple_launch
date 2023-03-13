@@ -44,6 +44,8 @@ This line runs a temporary client that wait for a service and calls it when avai
 - server is the path to some service
 - request is a dictionary representing the service request. If `None` or incomplete, will use the service request default values.
 
+If any request parameter is `__ns` it will be changed to the current namespace.
+
 The service type is deduced when it becomes available.
 
 ### Robust types for parameters
