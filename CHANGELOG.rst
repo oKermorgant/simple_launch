@@ -4,7 +4,7 @@ Changelog for package simple_launch
 
 Forthcoming
 -----------
-* list[GazeboBridge] crashes in 20.04
+* list[] -> List[] for type hints in 20.04
 * detail on __ns for services
 * add service call at launch
 * Contributors: Olivier Kermorgant
