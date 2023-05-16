@@ -31,36 +31,38 @@ class GazeboBridge:
     models = None
     world_name = None
 
+    gz_exec = 'gz'
+
     # ros <-> gz mapping
     # from https://github.com/ignitionrobotics/ros_ign/blob/foxy/ros_ign_bridge/README.md
-    msg_map = {'std_msgs/msg/Bool': 'ignition.msgs.Boolean',
- 'std_msgs/msg/Empty': 'ignition.msgs.Empty',
- 'std_msgs/msg/Float32': 'ignition.msgs.Float',
- 'std_msgs/msg/Float64': 'ignition.msgs.Double',
- 'std_msgs/msg/Header': 'ignition.msgs.Header',
- 'std_msgs/msg/Int32': 'ignition.msgs.Int32',
- 'std_msgs/msg/String': 'ignition.msgs.StringMsg',
- 'geometry_msgs/msg/Quaternion': 'ignition.msgs.Quaternion',
- 'geometry_msgs/msg/Vector3': 'ignition.msgs.Vector3d',
- 'geometry_msgs/msg/Point': 'ignition.msgs.Vector3d',
- 'geometry_msgs/msg/Pose': 'ignition.msgs.Pose',
- 'geometry_msgs/msg/PoseStamped': 'ignition.msgs.Pose',
- 'geometry_msgs/msg/Transform': 'ignition.msgs.Pose',
- 'geometry_msgs/msg/TransformStamped': 'ignition.msgs.Pose',
- 'geometry_msgs/msg/Twist': 'ignition.msgs.Twist',
- 'nav_msgs/msg/Odometry': 'ignition.msgs.Odometry',
- 'rosgraph_msgs/msg/Clock': 'ignition.msgs.Clock',
- 'sensor_msgs/msg/BatteryState': 'ignition.msgs.BatteryState',
- 'sensor_msgs/msg/CameraInfo': 'ignition.msgs.CameraInfo',
- 'sensor_msgs/msg/FluidPressure': 'ignition.msgs.FluidPressure',
- 'sensor_msgs/msg/Imu': 'ignition.msgs.IMU',
- 'sensor_msgs/msg/Image': 'ignition.msgs.Image',
- 'sensor_msgs/msg/JointState': 'ignition.msgs.Model',
- 'sensor_msgs/msg/LaserScan': 'ignition.msgs.LaserScan',
- 'sensor_msgs/msg/MagneticField': 'ignition.msgs.Magnetometer',
- 'sensor_msgs/msg/PointCloud2': 'ignition.msgs.PointCloudPacked',
- 'tf2_msgs/msg/TFMessage': 'ignition.msgs.Pose_V',
- 'trajectory_msgs/msg/JointTrajectory': 'ignition.msgs.JointTrajectory'}
+    msg_map = {'std_msgs/msg/Bool': 'gz.msgs.Boolean',
+ 'std_msgs/msg/Empty': 'gz.msgs.Empty',
+ 'std_msgs/msg/Float32': 'gz.msgs.Float',
+ 'std_msgs/msg/Float64': 'gz.msgs.Double',
+ 'std_msgs/msg/Header': 'gz.msgs.Header',
+ 'std_msgs/msg/Int32': 'gz.msgs.Int32',
+ 'std_msgs/msg/String': 'gz.msgs.StringMsg',
+ 'geometry_msgs/msg/Quaternion': 'gz.msgs.Quaternion',
+ 'geometry_msgs/msg/Vector3': 'gz.msgs.Vector3d',
+ 'geometry_msgs/msg/Point': 'gz.msgs.Vector3d',
+ 'geometry_msgs/msg/Pose': 'gz.msgs.Pose',
+ 'geometry_msgs/msg/PoseStamped': 'gz.msgs.Pose',
+ 'geometry_msgs/msg/Transform': 'gz.msgs.Pose',
+ 'geometry_msgs/msg/TransformStamped': 'gz.msgs.Pose',
+ 'geometry_msgs/msg/Twist': 'gz.msgs.Twist',
+ 'nav_msgs/msg/Odometry': 'gz.msgs.Odometry',
+ 'rosgraph_msgs/msg/Clock': 'gz.msgs.Clock',
+ 'sensor_msgs/msg/BatteryState': 'gz.msgs.BatteryState',
+ 'sensor_msgs/msg/CameraInfo': 'gz.msgs.CameraInfo',
+ 'sensor_msgs/msg/FluidPressure': 'gz.msgs.FluidPressure',
+ 'sensor_msgs/msg/Imu': 'gz.msgs.IMU',
+ 'sensor_msgs/msg/Image': 'gz.msgs.Image',
+ 'sensor_msgs/msg/JointState': 'gz.msgs.Model',
+ 'sensor_msgs/msg/LaserScan': 'gz.msgs.LaserScan',
+ 'sensor_msgs/msg/MagneticField': 'gz.msgs.Magnetometer',
+ 'sensor_msgs/msg/PointCloud2': 'gz.msgs.PointCloudPacked',
+ 'tf2_msgs/msg/TFMessage': 'gz.msgs.Pose_V',
+ 'trajectory_msgs/msg/JointTrajectory': 'gz.msgs.JointTrajectory'}
 
     @staticmethod
     def read_models():
@@ -78,12 +80,11 @@ class GazeboBridge:
         for key in ('GZ_VERSION', 'IGNITION_VERSION'):
             if key in environ:
                 if environ[key] == 'fortress':
-                    models = silent_exec('ign model --list')
+                    GazeboBridge.gz_exec = 'ign'
                 else:
-                    models = silent_exec('gz model --list')
+                    GazeboBridge.gz_exec = 'gz'
                 break
-        else:
-            models = silent_exec('ign model --list') + silent_exec('gz model --list')
+        models = silent_exec(GazeboBridge.gz_exec + ' model --list')
 
         for line in models:
             if line.startswith('Requesting'):
@@ -95,6 +96,13 @@ class GazeboBridge:
 
         GazeboBridge.models = [line.strip('- ') for line in models if line.startswith('- ')]
         print('\033[92mGazeboBridge: connected to a running Gazebo instance\033[0m')
+
+    @staticmethod
+    def use_prefix(prefix):
+        '''
+        Tell GazeboBridge to use either ign or gz prefix (default)
+        '''
+        GazeboBridge.gz_exec = prefix
 
     def __init__(self, gz_topic, ros_topic, msg, direction):
         '''
@@ -124,7 +132,7 @@ class GazeboBridge:
         self.direction = direction
         self.ros_msg = msg
 
-    def yaml(self, gz_ign):
+    def yaml(self):
         '''
         use YAML-based config for other bridges
         - topic_name: "chatter"
@@ -134,18 +142,20 @@ class GazeboBridge:
           direction: BIDIRECTIONAL  # Default "BIDIRECTIONAL" - Bridge both directions
                                     # "IGN_TO_ROS" - Bridge Ignition topic to ROS
                                     # "ROS_TO_IGN" - Bridge ROS topic
-
-        takes gz prefix that is either gz or ign depending on current ROS 2 version
         '''
 
         direction = 'BIDIRECTIONAL'
         if self.direction == self.gz2ros:
-            direction = f'{gz_ign.upper()}_TO_ROS'
+            direction = f'{self.gz_exec.upper()}_TO_ROS'
         elif self.direction == self.ros2gz:
-            direction = f'ROS_TO_{gz_ign.upper()}'
+            direction = f'ROS_TO_{self.gz_exec.upper()}'
 
-        return SimpleSubstitution(f'- {gz_ign}_topic_name: ', self.gz_topic, '\n',
-                                 f'  {gz_ign}_type_name: ', self.msg_map[self.ros_msg], '\n',
+        gz_msg = self.msg_map[self.ros_msg]
+        if self.gz_exec == 'ign':
+            gz_msg = gz_msg.replace('gz.','ignition.')
+
+        return SimpleSubstitution(f'- {self.gz_exec}_topic_name: ', self.gz_topic, '\n',
+                                 f'  {self.gz_exec}_type_name: ', gz_msg, '\n',
                                  '  ros_topic_name: ',self.ros_topic, '\n',
                                  '  ros_type_name: ', self.ros_msg, '\n',
                                  '  direction: ', direction, '\n')

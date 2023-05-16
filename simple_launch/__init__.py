@@ -460,8 +460,6 @@ class SimpleLauncher:
         '''
         Add a robot state publisher node to the launch tree using the given description (urdf / xacro) file.
 
-        If the file ends with 'xacro', or any path element is defined from an Argument, or xacro_args are passed, runs xacro on this file.
-
         * package -- is the name of the package that contains the description file (if None then assume an absolute description file)
         * description_file -- is the name of the urdf/xacro file
         * description_dir -- the name of the directory containing the file (None to have it found)
@@ -519,7 +517,7 @@ class SimpleLauncher:
     def gz_prefix():
         return 'ign' if SimpleLauncher.ros_version() < 'humble' else 'gz'
 
-    def create_gz_bridge(self, bridges: list[GazeboBridge], name = 'gz_bridge'):
+    def create_gz_bridge(self, bridges: [], name = 'gz_bridge'):
         '''
         Create a ros_gz_bridge::parameter_bridge with the passed GazeboBridge instances
         The bridge has a default name if not specified
@@ -530,8 +528,7 @@ class SimpleLauncher:
         if len(bridges) == 0:
             return
 
-        gz = self.gz_prefix()
-        ros_gz = f'ros_{gz}'
+        ros_gz = 'ros_' + self.gz_prefix()
 
         # add camera_info for image bridges
         im_bridges = [bridge for bridge in bridges if bridge.is_image]
@@ -550,7 +547,7 @@ class SimpleLauncher:
 
             bridges.append(GazeboBridge(gz_head + [cam[0]], ros_head + [cam[1]], 'sensor_msgs/CameraInfo', GazeboBridge.gz2ros))
 
-        std_config = sum([bridge.yaml(gz) for bridge in bridges if not bridge.is_image], [])
+        std_config = sum([bridge.yaml() for bridge in bridges if not bridge.is_image], [])
 
         if std_config.has_elems():
             # use YAML-based configuration, handles Gazebo topics that are invalid to ROS
@@ -600,6 +597,7 @@ class SimpleLauncher:
         Spawns a model into Gazebo under the given name, from the given topic or file
         Additional spawn_args can be given to specify e.g. the initial pose
         '''
+
         if model_file is not None:
             spawn_args = flatten(spawn_args + ['-file',model_file,'-name', name])
         else:
