@@ -10,7 +10,7 @@ from launch_ros.descriptions import ComposableNode
 from contextlib import contextmanager
 from .simple_substitution import SimpleSubstitution, flatten
 from .gazebo import only_show_args, silent_exec, GazeboBridge
-from typing import Text
+from typing import Text, List
 
 NODE_REMAPS = LAUNCH_ARGS = 1
 NODE_PARAMS = 2
@@ -517,7 +517,7 @@ class SimpleLauncher:
     def gz_prefix():
         return 'ign' if SimpleLauncher.ros_version() < 'humble' else 'gz'
 
-    def create_gz_bridge(self, bridges: [], name = 'gz_bridge'):
+    def create_gz_bridge(self, bridges: List[GazeboBridge], name = 'gz_bridge'):
         '''
         Create a ros_gz_bridge::parameter_bridge with the passed GazeboBridge instances
         The bridge has a default name if not specified

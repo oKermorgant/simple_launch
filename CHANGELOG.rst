@@ -2,6 +2,13 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* list[GazeboBridge] crashes in 20.04
+* detail on __ns for services
+* add service call at launch
+* Contributors: Olivier Kermorgant
+
 1.7.0 (2023-02-22)
 ------------------
 * GazeboBridge creates a camera_info topic for all bridged image topics
