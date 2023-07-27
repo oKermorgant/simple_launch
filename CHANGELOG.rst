@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* slight refactor to prepare wrapping Delays
+* Contributors: Olivier Kermorgant
+
 1.7.1 (2023-05-16)
 ------------------
 * list[] -> List[] for type hints in 20.04
