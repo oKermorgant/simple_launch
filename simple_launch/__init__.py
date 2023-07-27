@@ -67,6 +67,7 @@ class SimpleLauncher:
         If use_sim_time is True or False, creates a `use_sim_time` launch argument with this value as the default and forwards it to all nodes
         If use_sim_time is 'auto', then SimpleLauncher will set it to True if the /clock topic is advertized (case of an already running simulation)
         '''
+        # entity graph, the only ones that is run is at index 0
         self.entities = [[]]
         self.index = 0
         self.ns_graph = {0: -1}
@@ -278,9 +279,9 @@ class SimpleLauncher:
         raise Exception(f'Could not find file {file_name} in package {package}')
 
     def group_level_down(self):
+        self.ns_graph[len(self.entities)] = self.index
+        self.index = len(self.entities)
         self.entities.append([])
-        self.ns_graph[len(self.entities)-1] = self.index
-        self.index = len(self.entities)-1
 
     def group_level_up(self):
         new_entities = self.entities[self.index]
@@ -363,6 +364,7 @@ class SimpleLauncher:
         Directly adds a user-created Entity (Node, ComposableNodes, etc.)
         '''
         self.entities[self.index].append(entity)
+        return entity
 
     def node(self, package, executable = None, plugin = None, **node_args):
         '''
@@ -400,20 +402,21 @@ class SimpleLauncher:
             else:
                 node_args['parameters'] = [{'use_sim_time': self.sim_time}]
 
-        if not self.composed:
-            self.entity(Node(package=package, executable=executable, **node_args))
-        else:
+        if self.composed:
             # check plugin name - add package if needed
             if '::' not in plugin:
                 plugin = '{}::{}'.format(package, plugin)
-            self.entity(ComposableNode(package=package, plugin=plugin, **node_args))
+            return self.entity(ComposableNode(package=package, plugin=plugin, **node_args))
+
+        # basic node
+        return self.entity(Node(package=package, executable=executable, **node_args))
 
     def include(self, package=None, launch_file=None, launch_dir=None, launch_arguments=None):
         '''
         Include another launch file
         '''
         launch_file = self.find(package, launch_file, launch_dir)
-        self.entity(IncludeLaunchDescription(
+        return self.entity(IncludeLaunchDescription(
             AnyLaunchDescriptionSource(launch_file),
             launch_arguments=adapt_type(launch_arguments, LAUNCH_ARGS)))
 
