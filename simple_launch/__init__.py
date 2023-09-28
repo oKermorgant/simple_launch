@@ -213,6 +213,8 @@ class SimpleLauncher:
             if performed.lower() in ('true', 'false'):
                 return literal_eval(performed.title())
             return performed
+        except SyntaxError:
+            return performed
 
     def py_eval(self, *elems):
         '''
