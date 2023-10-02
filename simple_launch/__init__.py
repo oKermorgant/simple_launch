@@ -208,13 +208,13 @@ class SimpleLauncher:
         from ast import literal_eval
         performed = substitution.perform(self.__context)
         try:
-            return literal_eval(substitution.perform(self.__context))
+            return literal_eval(performed)
         except ValueError:
             if performed.lower() in ('true', 'false'):
                 return literal_eval(performed.title())
-            return performed
         except SyntaxError:
-            return performed
+            pass
+        return performed
 
     def py_eval(self, *elems):
         '''
