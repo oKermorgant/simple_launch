@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.7.2 (2023-10-02)
+------------------
 * simplify logic of try_perform
 * Merge pull request `#5 <https://github.com/oKermorgant/simple_launch/issues/5>`_ from okvik/devel
   Fix string-valued launch argument substitution
