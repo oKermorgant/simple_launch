@@ -4,6 +4,12 @@ Changelog for package simple_launch
 
 Forthcoming
 -----------
+* simplify logic of try_perform
+* Merge pull request `#5 <https://github.com/oKermorgant/simple_launch/issues/5>`_ from okvik/devel
+  Fix string-valued launch argument substitution
+* slight refactor to prepare wrapping Delays
+* Contributors: Olivier Kermorgant, Viktor Pocedulic
+
 * slight refactor to prepare wrapping Delays
 * Contributors: Olivier Kermorgant
 
