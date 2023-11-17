@@ -1,5 +1,6 @@
 from simple_launch import SimpleLauncher
 
+
 def generate_launch_description():
     '''
 
@@ -7,7 +8,7 @@ def generate_launch_description():
     '''
     sl = SimpleLauncher()
 
-    prefix = sl.declare_arg('prefix', default_value = '', description='namespace of the robot (also tf prefix)')
+    sl.declare_arg('prefix', default_value = '', description='namespace of the robot (also tf prefix)')
     sl.declare_arg('x', default_value = 0, description='x-offset of the robot')
     sl.declare_arg('y', default_value = 0, description='y-offset of the robot')
     use_gui = sl.declare_arg('use_gui', default_value = True, description='Use JSP gui')

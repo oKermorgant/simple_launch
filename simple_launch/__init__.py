@@ -1,14 +1,16 @@
 from os.path import join, exists
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription, Substitution
-from launch_ros.actions import Node, PushRosNamespace, ComposableNodeContainer, LoadComposableNodes
-from launch.actions import DeclareLaunchArgument, GroupAction, IncludeLaunchDescription, ExecuteProcess
+from launch_ros.actions import Node, ComposableNodeContainer, LoadComposableNodes
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, Command, PythonExpression
 from launch.conditions import IfCondition, UnlessCondition
 from launch_ros.descriptions import ComposableNode
 from contextlib import contextmanager
 from .simple_substitution import SimpleSubstitution, flatten
+from .group import Group
+from . import console
 from .gazebo import only_show_args, silent_exec, GazeboBridge
 from typing import Text, List
 
@@ -61,23 +63,18 @@ def adapt_type(params, target):
 
 class SimpleLauncher:
 
-    def __init__(self, namespace = '', use_sim_time = None):
+    def __init__(self, namespace = None, use_sim_time = None):
         '''
         Initializes entities in the given workspace
         If use_sim_time is True or False, creates a `use_sim_time` launch argument with this value as the default and forwards it to all nodes
         If use_sim_time is 'auto', then SimpleLauncher will set it to True if the /clock topic is advertized (case of an already running simulation)
         '''
-        # entity graph, the only ones that is run is at index 0
-        self.entities = [[]]
-        self.index = 0
-        self.ns_graph = {0: -1}
-        self.composed = False
+        # group lists
+        self.__groups = [Group(namespace)]
+        self.__cur_group = self.__groups[0]
         self.sim_time = None
         self.gz_axes = ('x','y','z','yaw','pitch','roll')
         self.__context = None
-
-        if namespace:
-            self.entity(PushRosNamespace(namespace))
 
         if use_sim_time is None:
             return
@@ -88,9 +85,9 @@ class SimpleLauncher:
                              description = 'Force use_sim_time parameter of instanciated nodes')
             self.auto_sim_time(self.arg('use_sim_time'))
         elif use_sim_time != 'auto':
-            raise(RuntimeWarning("\033[93mSimpleLauncher: `use_sim_time` should be None, a Boolean, or 'auto' to rely on the /clock topic\033[0m"))
+            console.warn("`use_sim_time` should be None, a Boolean, or 'auto' to rely on the /clock topic, ignoring")
         elif only_show_args():
-            print('\033[93mThis launch file will forward use_sim_time to all nodes if /clock is advertized at the time of the launch\033[0m')
+            console.warn("This launch file will forward use_sim_time to all nodes if /clock is advertized at the time of the launch")
             return
         else:
             self.auto_sim_time()
@@ -108,9 +105,9 @@ class SimpleLauncher:
                     self.sim_time = int(line.split()[-1]) > 0
                     break
             if self.sim_time:
-                print("\033[92mSimpleLauncher(use_sim_time='auto'): found a /clock topic, forwarding use_sim_time:=True to all nodes\033[0m")
+                console.info("SimpleLauncher(use_sim_time='auto'): found a /clock topic, forwarding use_sim_time:=True to all nodes")
             else:
-                print("\033[92mSimpleLauncher(use_sim_time='auto'): no /clock topic found, forwarding use_sim_time:=False to all nodes\033[0m")
+                console.info("SimpleLauncher(use_sim_time='auto'): no /clock topic found, forwarding use_sim_time:=False to all nodes")
         else:
             self.sim_time = force
 
@@ -119,9 +116,9 @@ class SimpleLauncher:
         Add an argument to the launch file
         '''
         if self.has_context():
-            raise Exception('simple_launch: declaring a launch argument while inside an opaque function')
+            console.error(f'declaring a launch argument "{name}" while inside an opaque function\nyou should declare the arguments before the function')
 
-        self.entity(DeclareLaunchArgument(
+        self.__groups[0].add_action(DeclareLaunchArgument(
             name,
             default_value=str(default_value),
             **kwargs))
@@ -177,11 +174,15 @@ class SimpleLauncher:
 
         If opaque_function is not None, then returns the generate_launch_description() wrapper around the passed function
         '''
+
         if opaque_function is None:
-            return self.entities[0] if self.has_context() else LaunchDescription(self.entities[0])
+            # classical call without opaque function
+            main_actions = self.__cur_group.close()
+            return main_actions if self.has_context() else LaunchDescription(main_actions)
 
         if self.has_context():
-            raise Exception('Calling SimpleLauncher.launch_description with opaque function within an opaque function')
+            # opaque function but we already have context
+            console.error('Calling SimpleLauncher.launch_description with opaque function within an opaque function makes it really opaque')
 
         from launch.actions import OpaqueFunction
 
@@ -191,7 +192,8 @@ class SimpleLauncher:
                 self.__context = context
                 return opaque_function()
 
-            return LaunchDescription(self.entities[0] + [OpaqueFunction(function = wrapped_opaque_function)])
+            return LaunchDescription(self.__cur_group.close()
+                                     + [OpaqueFunction(function = wrapped_opaque_function)])
 
         return generate_launch_description
 
@@ -219,8 +221,11 @@ class SimpleLauncher:
     def py_eval(self, *elems):
         '''
         Evaluates the Python expression
+        Make sure Boolean are in Pythonic case
         '''
-        return self.try_perform(SimpleSubstitution(PythonExpression(elems)))
+        expr = list(map(stringify, elems))
+        expr = SimpleSubstitution("eval('", expr, "'.replace('true', 'True').replace('false', 'False'))")
+        return self.try_perform(SimpleSubstitution(PythonExpression(expr)))
 
     def name_join(self, *elems):
         return self.try_perform(SimpleSubstitution(elems))
@@ -278,55 +283,46 @@ class SimpleLauncher:
                 return join(package_dir, root, file_name)
 
         # not there
-        raise Exception(f'Could not find file {file_name} in package {package}')
-
-    def group_level_down(self):
-        self.ns_graph[len(self.entities)] = self.index
-        self.index = len(self.entities)
-        self.entities.append([])
-
-    def group_level_up(self):
-        new_entities = self.entities[self.index]
-        self.index = self.ns_graph[self.index]
-        return new_entities
+        console.error(f'Could not find file {file_name} in package {package}')
 
     @contextmanager
-    def group(self, ns=None, if_arg=None, unless_arg=None, if_condition=None, unless_condition=None):
+    def group(self, ns=None, if_arg=None, unless_arg=None,
+              if_condition=None, unless_condition=None,
+              when = None):
         '''
         Group the next nodes / entities into
          - another namespace
          - a if / unless condition depending on some argument
          - a raw if / unless condition that may come out of an expression
+         - an event condition (from simple_launch import OnExit, OnStart
         '''
-        self.group_level_down()
+        condition = None
 
-        if ns is not None:
-            self.entity(PushRosNamespace(ns))
+        if self.__cur_group.is_container():
+            console.error(f'Container "{self.__cur_group.is_container()}": Group blocks cannot be nested inside container blocks. Use OpaqueFunction or reverse the logic.')
+
+        # we can only deal with 1 condition
+        conditions = (if_arg, unless_arg, if_condition, unless_condition)
+        if len(conditions) - conditions.count(None) > 1:
+            console.error(f'group blocks cannot have more than 1 condition (has {len(conditions) - conditions.count(None)}')
+
+        # get condition
+        if if_arg is not None:
+            condition = IfCondition(LaunchConfiguration(if_arg))
+        elif unless_arg is not None:
+            condition = UnlessCondition(LaunchConfiguration(unless_arg))
+        elif if_condition is not None:
+            condition = IfCondition(SimpleSubstitution(if_condition))
+        elif unless_condition is not None:
+            condition = UnlessCondition(SimpleSubstitution(unless_condition))
+
+        self.__groups.append(Group(ns = ns, condition = condition, parent = self.__cur_group, when = when))
+        self.__cur_group = self.__groups[-1]
 
         try:
             yield self
         finally:
-
-            new_entities = self.group_level_up()
-
-            condition = None
-
-            # we can only deal with 1 condition
-            conditions = (if_arg, unless_arg, if_condition, unless_condition)
-            if len(conditions) - conditions.count(None) > 1:
-                raise Exception(f'SimpleLauncher groups cannot have more than 1 condition (has {len(conditions) - conditions.count(None)}')
-
-            # get condition
-            if if_arg is not None:
-                condition = IfCondition(self.arg(if_arg))
-            elif unless_arg is not None:
-                condition = UnlessCondition(self.arg(unless_arg))
-            elif if_condition is not None:
-                condition = IfCondition(SimpleSubstitution(if_condition))
-            elif unless_condition is not None:
-                condition = UnlessCondition(SimpleSubstitution(unless_condition))
-            # add new entities as sub-group
-            self.entity(GroupAction(new_entities, condition=condition))
+            self.__cur_group = self.__cur_group.close()
 
     @contextmanager
     def container(self, name, namespace = '', existing = False, package='rclcpp_components', executable='component_container', **container_args):
@@ -334,38 +330,36 @@ class SimpleLauncher:
         Opens a Composition group to add nodes
         If existing is True, then loads nodes in the (supposely) existing container
         '''
-        self.group_level_down()
 
-        self.composed = True
+        self.__groups.append(Group(parent = self.__cur_group, container = name))
+        self.__cur_group = self.__groups[-1]
+
         try:
             yield self
         finally:
-
-            self.composed = False
-            new_entities = self.group_level_up()
+            self.__cur_group, composed = self.__cur_group.close()
 
             # store ComposableNodes inside a Container
             if existing:
                 self.entity(
                     LoadComposableNodes(
-                        composable_node_descriptions = new_entities,
-                        target_container=name
-                        ))
+                        composable_node_descriptions = composed,
+                        target_container=name))
             else:
                 self.entity(
-                ComposableNodeContainer(
-                name=name,
-                namespace=namespace,
-                package=package,
-                executable=executable,
-                composable_node_descriptions=new_entities,
-                **container_args))
+                    ComposableNodeContainer(
+                        name=name,
+                        namespace=namespace,
+                        package=package,
+                        executable=executable,
+                        composable_node_descriptions = composed,
+                        **container_args))
 
     def entity(self, entity):
         '''
-        Directly adds a user-created Entity (Node, ComposableNodes, etc.)
+        Adds a user-created Entity (Node, ComposableNodes, etc.) at the current group level
         '''
-        self.entities[self.index].append(entity)
+        self.__cur_group.add_action(entity)
         return entity
 
     def node(self, package, executable = None, plugin = None, **node_args):
@@ -377,10 +371,12 @@ class SimpleLauncher:
         * plugin (inside a composition group) -- name of the composed node plugin within the package
         * node_args -- any other args passed to the node constructor
         '''
-        if executable is None and not self.composed:
+        as_composable = self.__cur_group.is_container()
+
+        if executable is None and not as_composable:
             executable = package
-        if plugin is None and self.composed:
-            raise Exception('Indicate the plugin name when adding a composable node')
+        if plugin is None and as_composable:
+            console.error('Indicate the plugin name when adding a composable node')
 
         for key,target in (('parameters',NODE_PARAMS),('remappings',NODE_REMAPS)):
             if key in node_args:
@@ -399,12 +395,12 @@ class SimpleLauncher:
                         if not any(line.strip().startswith('use_sim_time') for line in config):
                             node_args['parameters'].append({'use_sim_time': self.sim_time})
                 else:
-                    print('simple_launch: skipping use_sim_time for node', f'{package}/{executable}', 'cannot check if already here')
+                    console.neutral(f'skipping use_sim_time for node {package}/{executable}, cannot check if already here')
 #                    #node_args['parameters'] += [{'use_sim_time': self.sim_time}]
             else:
                 node_args['parameters'] = [{'use_sim_time': self.sim_time}]
 
-        if self.composed:
+        if as_composable:
             # check plugin name - add package if needed
             if '::' not in plugin:
                 plugin = '{}::{}'.format(package, plugin)

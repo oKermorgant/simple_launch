@@ -3,11 +3,11 @@ project(simple_launch)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY
-        example
+install(DIRECTORY example
         DESTINATION share/${PROJECT_NAME})
 
-install(PROGRAMS scripts/service_wrapper DESTINATION lib/${PROJECT_NAME})
+install(PROGRAMS scripts/service_wrapper scripts/example_waiting.py
+        DESTINATION lib/${PROJECT_NAME})
 
 ament_python_install_package(${PROJECT_NAME})
 

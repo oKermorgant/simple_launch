@@ -119,6 +119,24 @@ Only one condition can be set in a group, nested condition must be combined firs
 ```
 If `if_arg` / `unless_arg` is not a string then it is considered as a `if_condition` / `unless_condition`.
 
+
+### From events
+
+The `when` argument wraps events from the `launch.event_handlers` module.
+
+```
+from simple_launch.events import When, OnProcessStart, OnProcessExit
+
+    my_node = sl.node(...)   # reference node
+
+    with sl.group(when = When(OnProcessStart, my_node, 1.)):
+        sl.node(...)  # will run 1 s after main node starts
+
+    with sl.group(when = When(OnProcessExit, my_node)):
+        sl.node(...)  # will run as soon as the main node exists
+```
+
+
 ### Creating containers
 
 This syntax adds the `composition/composition::Talker` as a ComposableNode
@@ -133,6 +151,9 @@ Use the `executable` and `package` parameters if you want to use executors other
 ```
   with sl.container(name='my_container', output='screen', executable='component_container_isolated'):
 ```
+***It is currently impossible to have group blocks within a container block, as containers can only accept `ComposableNode`s***
+
+
 
 ## `use_sim_time`
 
@@ -147,7 +168,7 @@ In all cases, if the `use_sim_time` parameter is explicitely given to a node, it
 
 ## Wrapper around `OpaqueFunction`
 
-Most of the use cases can be dealt with substitutions and `with sl.group` blocs.
+Most of the use cases can be dealt with substitutions and `with sl.group` blocks.
 In order to design more imperative launch files, the [`OpaqueFunction`](https://discourse.ros.org/t/simplifying-launch-argument-declaration-and-initialization-in-launch-files/24204) approach can be used. The main drawback is that potential errors are harder to track.
 
 To do this with `simple_launch`:
@@ -210,6 +231,8 @@ If any axis is given (e.g. `sl.declare_gazebo_axes(yaw = 3.14)` then only this p
 Such parameters can be retrieved through `sl.gazebo_axes_args()`. As a consequence, it is easy to spawn a model with:
 ```
 sl.declare_gazebo_axes()
+
+sl.robot_description(...)
 sl.spawn_gz_model(name, spawn_args = sl.gazebo_axes_args())
 ```
 
@@ -505,3 +528,9 @@ def generate_launch_description():
     return sl.launch_description()
 
 ```
+
+## I want more examples
+
+Other self-contained examples (and slides) have been used to teach the ROS 2 launch file system.
+
+They are available in the [anf_launch](https://github.com/oKermorgant/anf_launch) package.
