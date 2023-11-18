@@ -1,5 +1,6 @@
 from simple_launch import SimpleLauncher
 
+
 def generate_launch_description():
 
     sl = SimpleLauncher()
@@ -18,15 +19,14 @@ def generate_launch_description():
         sl.include('simple_launch', 'included_launch.py',
                    launch_arguments = {'prefix': 'robot1'})
 
+    # combining conditions amounts to nesting groups
     with sl.group(if_arg='robot2'):
-
         with sl.group(unless_arg='no_robot2'):
-
             args = {'prefix': 'robot2', 'x':sl.arg('robot2_x'), 'y': sl.arg('robot2_y')}
             sl.include('simple_launch', 'included_launch.py', launch_arguments=args)
 
     with sl.group(if_arg='rviz'):
         rviz_config = sl.find('simple_launch', 'turret.rviz')
-        sl.node('rviz2', 'rviz2', arguments = ['-d', rviz_config])
+        sl.rviz(rviz_config)
 
     return sl.launch_description()
