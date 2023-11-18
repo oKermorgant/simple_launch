@@ -24,7 +24,7 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 - `package` is the node package
 - `executable` is the name of the executable
-- `node_args` are any additional `Node` arguments given as a list
+- `node_args` are any additional `Node` arguments
 
 ### Launch file include
 
@@ -37,16 +37,27 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 ### Call a service at launch
 
-This line runs a temporary client that wait for a service and calls it when available:
+This line runs a temporary client that waits for a service and calls it when available:
 
-`sl.service(server, request = None)` where
+`sl.call_service(server, request = None)` where
 
-- server is the path to some service
-- request is a dictionary representing the service request. If `None` or incomplete, will use the service request default values.
+- `server` is the path to some service
+- `request` is a dictionary representing the service request. If `None` or incomplete, will use the service request default values.
 
 If any request parameter is `__ns` it will be changed to the current namespace.
 
 The service type is deduced when it becomes available.
+
+### Setting parameters
+
+This line runs a temporary client that waits for a node and changes its parameters when available:
+
+`sl.set_parameters(node_name, parameters: dict = {})` where
+
+- `node_name` is the name of the node (possibly namespaced)
+- `parameters` is a dictionary of (name, value) parameters to be set
+
+This calls the `set_parameters` service of the node with the passed types. Possible errors may happen if the parameters do not exist or are of a different type.
 
 ### Robust types for parameters
 
@@ -79,9 +90,11 @@ The helper class allows declaring launch arguments and getting them in return:
 
 `sl.arg_map('robot', 'x', 'y')`: returns `{'robot': <robot arg value>, 'x': <x arg value>, 'y': <y arg value>}`
 
+Typical when forwarding some launch arguments to a node or an included launch file.
+
 ## Node groups
 
-Groups are created through the `with sl.group():` syntax and accept both a namespace and/or an if/unless condition:
+Groups are created through the `with sl.group():` syntax and accept, a namespace an if/unless condition and an event:
 
 ### By namespace
 
@@ -120,19 +133,19 @@ Only one condition can be set in a group, nested condition must be combined firs
 If `if_arg` / `unless_arg` is not a string then it is considered as a `if_condition` / `unless_condition`.
 
 
-### From events
+### From events (work in progress, API subject to change)
 
-The `when` argument wraps events from the `launch.event_handlers` module.
+The `when` argument wraps events from the `launch.event_handlers` module. It combine an event and a delay (0 by default)
 
 ```
 from simple_launch.events import When, OnProcessStart, OnProcessExit
 
     my_node = sl.node(...)   # reference node
 
-    with sl.group(when = When(OnProcessStart, my_node, 1.)):
+    with sl.group(when = When(my_node, OnProcessStart, 1.)):
         sl.node(...)  # will run 1 s after main node starts
 
-    with sl.group(when = When(OnProcessExit, my_node)):
+    with sl.group(when = When(my_node, OnProcessExit)):
         sl.node(...)  # will run as soon as the main node exists
 ```
 
@@ -462,6 +475,10 @@ def generate_launch_description():
 
     return sl.launch_description()
 ```
+
+<!-- ## Events and parameters -->
+
+
 
 ### auto sim time
 
