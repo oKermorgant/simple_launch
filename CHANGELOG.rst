@@ -2,6 +2,14 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* sync documentation and examples
+* when instead of after for events
+* scoped events
+* add event wrapper
+* Contributors: Olivier Kermorgant
+
 1.7.2 (2023-10-02)
 ------------------
 * simplify logic of try_perform
