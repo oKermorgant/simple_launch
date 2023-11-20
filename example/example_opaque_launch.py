@@ -32,8 +32,7 @@ def launch_setup():
         sl.include('simple_launch', sl.arg('included') + '.py', launch_arguments=args)
 
     if sl.arg('rviz'):
-        rviz_config = sl.find('simple_launch', 'turret.rviz')
-        sl.node('rviz2', 'rviz2', arguments = ['-d', rviz_config])
+        sl.rviz(sl.find('simple_launch', 'turret.rviz'))
 
     return sl.launch_description()
 

@@ -425,23 +425,25 @@ class SimpleLauncher:
             AnyLaunchDescriptionSource(launch_file),
             launch_arguments=adapt_type(launch_arguments, LAUNCH_ARGS)))
 
-    def call_service(self, server, request = None, verbose = False):
+    def call_service(self, server, request = None, verbosity = '', **kwargs):
         '''
         Calls the service at server address after checking its type.
         Request is a dictionary that is forwarded to service request fields, assuming they match
+        verbosity is none or 'req', 'res' or 'reqres' to get information on service call
         '''
-        params = {'simple_launch.server': server, 'simple_launch.verbose': verbose}
+        params = {'simple_launch.server': server, 'simple_launch.verbosity': verbosity}
         if request is not None:
             params.update(request)
-        return self.node('simple_launch', 'call_service', parameters = params)
+        return self.node('simple_launch', 'call_service', parameters = params, **kwargs)
 
-    def set_parameters(self, node_name, parameters: dict = {}, verbose = False):
+    def set_parameters(self, node_name, parameters: dict = {}, verbosity = '', **kwargs):
         '''
         Sets the requested parameters for this node
+        verbosity is none or 'req', 'res' or 'reqres' to get information on service call
         '''
         return self.node('simple_launch', 'set_parameters',
-                  parameters = parameters | {'simple_launch.node': node_name, 'simple_launch.keys': list(parameters.keys()), 'simple_launch.verbose': verbose},
-                  output='screen')
+                  parameters = parameters | {'simple_launch.node': node_name, 'simple_launch.keys': list(parameters.keys()), 'simple_launch.verbosity': verbosity},
+                  **kwargs)
 
     def rviz(self, config_file = None, warnings = False):
         '''

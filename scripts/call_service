@@ -13,7 +13,10 @@ rclpy.init(args=None)
 node = Node('call_service_' + ''.join(choice(ascii_letters) for _ in range(8)))
 
 server = node.declare_parameter('simple_launch.server', '').value
-verbose = node.declare_parameter('simple_launch.verbose', False).value
+verbosity = node.declare_parameter('simple_launch.verbosity', '').value
+
+req_v = 'req' in verbosity
+res_v = 'res' in verbosity
 
 if not server:
     sys.exit(0)
@@ -25,7 +28,7 @@ if server[0] != '/':
 
 # wait and identify which service type is here
 srv = ''
-if verbose:
+if req_v:
     node.get_logger().info(f'Checking service {server}')
 
 while srv == '':
@@ -35,7 +38,7 @@ while srv == '':
     except CalledProcessError:
         pass
 
-if verbose:
+if req_v:
     node.get_logger().info(f'Calling service {server}')
 
 pkg,_,srv = srv.split('/')
@@ -64,7 +67,14 @@ res = client.call_async(req)
 
 while not res.done():
     rclpy.spin_once(node)
-if verbose:
+
+if res_v:
+    res = dict((name, getattr(res.result(), name)) for name in res.result().get_fields_and_field_types())
+    node.get_logger().info(f'{server} response is {res}')
+    print(f'{server} response is {res}')
+elif req_v:
+    node.get_logger().info(f'Call to {server} done')
     print(f'Call to {server} done')
+
 node.destroy_node()
 rclpy.shutdown()

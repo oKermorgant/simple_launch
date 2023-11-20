@@ -135,20 +135,28 @@ If `if_arg` / `unless_arg` is not a string then it is considered as a `if_condit
 
 ### From events (work in progress, API subject to change)
 
-The `when` argument wraps events from the `launch.event_handlers` module. It combine an event and a delay (0 by default)
+The `when` argument wraps events from the `launch.event_handlers` module. It combines an event and a delay (0 by default)
 
 ```
-from simple_launch.events import After, OnProcessStart, OnProcessExit
+from simple_launch.events import When, OnProcessStart, OnProcessExit
 
     my_node = sl.node(...)   # reference node
 
-    with sl.group(when = After(my_node, OnProcessStart, 1.)):
+    with sl.group(when = When(my_node, OnProcessStart, 1.)):
         sl.node(...)  # will run 1 s after main node starts
 
-    with sl.group(when = After(my_node, OnProcessExit)):
+    with sl.group(when = When(my_node, OnProcessExit)):
         sl.node(...)  # will run as soon as the main node exists
 
-    with sl.group(when = After(delay = 2.)):
+    with sl.group(when = When(my_node, OnProcessIO, io = 'stdout'):
+        # OnProcessIO events need a function changing the event into an action
+        sl.add_action(lambda event: LogInfo(msg = 'Spawn request says "{}"'.format(
+                        event.text.decode().strip())))
+        # several functions can be used if needed, they will be combined in a single one
+        sl.add_action(lambda event: LogInfo(msg = 'Once again, spawn request says "{}"'.format(
+                        event.text.decode().strip())))
+
+    with sl.group(when = When(delay = 2.)):
         sl.node(...)  # will run after 2 sec
 ```
 
@@ -168,7 +176,7 @@ Use the `executable` and `package` parameters if you want to use executors other
   with sl.container(name='my_container', output='screen', executable='component_container_isolated'):
 ```
 
-***It is currently impossible to have group blocks within a container block, as containers can only accept `ComposableNode`s***
+***It is currently impossible to have group blocks within a container block, as containers can only accept `ComposableNode`s*** that are not compatible to the namespace or condition logic of simple groups.
 
 
 ## `use_sim_time`

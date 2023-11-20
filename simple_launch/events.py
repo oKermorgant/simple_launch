@@ -11,7 +11,7 @@ def wrap(action, delay):
     return [TimerAction(period=delay, actions=[action])]
 
 
-class After:
+class When:
 
     def __init__(self,
                  action = None,

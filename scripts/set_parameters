@@ -18,13 +18,23 @@ params = node.get_parameter('simple_launch.keys').value
 if not target_node:
     sys.exit(0)
 
-# wait for set param server
+if target_node[0] != '/' and len(node.get_namespace()) > 1:
+    target_node = f'{node.get_namespace()}/{target_node}'
+if target_node[0] != '/':
+    target_node = f'/{target_node}'
+
+# wait for set param target_node
 param_client = node.create_client(SetParameters, target_node + '/set_parameters')
 param_client.wait_for_service()
 
 # declare and get them values
 target_params = [node.get_parameter(name) for name in params]
-if node.get_parameter('simple_launch.verbose').value:
+verbosity = node.get_parameter('simple_launch.verbosity').value
+
+req_v = 'req' in verbosity
+res_v = 'res' in verbosity
+
+if req_v:
     node.get_logger().info(f'Setting parameters for {target_node}: {", ".join(params)}')
 
 # convert to SetParam request and call
@@ -35,6 +45,27 @@ res = param_client.call_async(request)
 
 while not res.done():
     rclpy.spin_once(node)
+
+failed = []
+success = []
+for i,result in enumerate(res.result().results):
+
+    if result.successful:
+        success.append(params[i])
+    else:
+        failed.append('Set parameter failed')
+        if result.reason:
+            failed[-1] += f': {result.reason.strip(".")} (was {target_params[i].value})'
+
+out = []
+if success and req_v:
+    out.insert(0, 'Set parameter successful: ' + ', '.join(success))
+# print failures anyway
+out += failed
+
+if out:
+    for param in out:
+        node.get_logger().info(param)
 
 node.destroy_node()
 rclpy.shutdown()

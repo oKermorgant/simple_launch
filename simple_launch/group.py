@@ -1,14 +1,14 @@
 from launch_ros.actions import PushRosNamespace
 from launch.actions import GroupAction
 from launch import Action
-from .events import After
-from . import console
+from .events import When
+
 
 class Group:
 
     def __init__(self, ns=None, condition=None, container='',
                  parent = None,
-                 when: After = None):
+                 when: When = None):
 
         self.__parent = parent
         self.__condition = condition
@@ -45,11 +45,9 @@ class Group:
         # closing a classical group, potentially with event handling
         if self.__actions:
 
-            # check consistensy
-
             if any(not isinstance(action, Action) for action in self.__actions):
-                # probably a function call due to OnProcessIO
-                # skip GroupAction as it is not callable
+                # probably a raw function call due to OnProcessIO
+                # skip GroupAction as it makes it not callable
                 group = self.__actions
             else:
                 ns_tree = list(map(PushRosNamespace, self.__ns))
