@@ -10,15 +10,23 @@ from time import sleep
 from importlib import import_module
 
 rclpy.init(args=None)
-node = Node('service_wrapper_' + ''.join(choice(ascii_letters) for _ in range(8)))
+node = Node('call_service_' + ''.join(choice(ascii_letters) for _ in range(8)))
 
-server = node.declare_parameter('server', '').value
+server = node.declare_parameter('simple_launch.server', '').value
+verbose = node.declare_parameter('simple_launch.verbose', False).value
 
 if not server:
     sys.exit(0)
 
+if server[0] != '/' and len(node.get_namespace()) > 1:
+    server = f'{node.get_namespace()}/{server}'
+if server[0] != '/':
+    server = f'/{server}'
+
 # wait and identify which service type is here
 srv = ''
+if verbose:
+    node.get_logger().info(f'Checking service {server}')
 
 while srv == '':
     sleep(1)
@@ -27,6 +35,9 @@ while srv == '':
     except CalledProcessError:
         pass
 
+if verbose:
+    node.get_logger().info(f'Calling service {server}')
+
 pkg,_,srv = srv.split('/')
 pkg = import_module(pkg + '.srv')
 srv = getattr(pkg, srv)
@@ -34,7 +45,6 @@ req = srv.Request()
 
 # declare request fields as node params
 for field in req.get_fields_and_field_types():
-    print('current field:',field,getattr(req,field))
     default_val = getattr(req,field)
     try:
         param = node.declare_parameter(field, default_val)
@@ -54,5 +64,7 @@ res = client.call_async(req)
 
 while not res.done():
     rclpy.spin_once(node)
+if verbose:
+    print(f'Call to {server} done')
 node.destroy_node()
 rclpy.shutdown()

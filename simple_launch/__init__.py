@@ -2,7 +2,7 @@ from os.path import join, exists
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription, Substitution
 from launch_ros.actions import Node, ComposableNodeContainer, LoadComposableNodes
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess, LogInfo
 from launch.launch_description_sources import AnyLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, Command, PythonExpression
 from launch.conditions import IfCondition, UnlessCondition
@@ -69,7 +69,7 @@ class SimpleLauncher:
         If use_sim_time is True or False, creates a `use_sim_time` launch argument with this value as the default and forwards it to all nodes
         If use_sim_time is 'auto', then SimpleLauncher will set it to True if the /clock topic is advertized (case of an already running simulation)
         '''
-        # group lists
+        # group tree
         self.__groups = [Group(namespace)]
         self.__cur_group = self.__groups[0]
         self.sim_time = None
@@ -306,7 +306,7 @@ class SimpleLauncher:
         if len(conditions) - conditions.count(None) > 1:
             console.error(f'group blocks cannot have more than 1 condition (has {len(conditions) - conditions.count(None)}')
 
-        # get condition
+        # get condition, cast as
         if if_arg is not None:
             condition = IfCondition(LaunchConfiguration(if_arg))
         elif unless_arg is not None:
@@ -341,12 +341,12 @@ class SimpleLauncher:
 
             # store ComposableNodes inside a Container
             if existing:
-                self.entity(
+                self.add_action(
                     LoadComposableNodes(
                         composable_node_descriptions = composed,
                         target_container=name))
             else:
-                self.entity(
+                self.add_action(
                     ComposableNodeContainer(
                         name=name,
                         namespace=namespace,
@@ -355,12 +355,12 @@ class SimpleLauncher:
                         composable_node_descriptions = composed,
                         **container_args))
 
-    def entity(self, entity):
+    def add_action(self, action):
         '''
-        Adds a user-created Entity (Node, ComposableNodes, etc.) at the current group level
+        Adds a user-created Action (Node, ComposableNodes, Group, etc.) at the current group level
         '''
-        self.__cur_group.add_action(entity)
-        return entity
+        self.__cur_group.add_action(action)
+        return action
 
     def node(self, package, executable = None, plugin = None, **node_args):
         '''
@@ -373,10 +373,11 @@ class SimpleLauncher:
         '''
         as_composable = self.__cur_group.is_container()
 
+        if plugin is None and as_composable:
+            console.error('Indicate the plugin name when adding a composable node to a container')
+
         if executable is None and not as_composable:
             executable = package
-        if plugin is None and as_composable:
-            console.error('Indicate the plugin name when adding a composable node')
 
         for key,target in (('parameters',NODE_PARAMS),('remappings',NODE_REMAPS)):
             if key in node_args:
@@ -404,30 +405,43 @@ class SimpleLauncher:
             # check plugin name - add package if needed
             if '::' not in plugin:
                 plugin = '{}::{}'.format(package, plugin)
-            return self.entity(ComposableNode(package=package, plugin=plugin, **node_args))
+            return self.add_action(ComposableNode(package=package, plugin=plugin, **node_args))
 
         # basic node
-        return self.entity(Node(package=package, executable=executable, **node_args))
+        return self.add_action(Node(package=package, executable=executable, **node_args))
+
+    def log_info(self, msg):
+        '''
+        Adds a LogInfo
+        '''
+        return self.add_action(LogInfo(msg = msg))
 
     def include(self, package=None, launch_file=None, launch_dir=None, launch_arguments=None):
         '''
         Include another launch file
         '''
         launch_file = self.find(package, launch_file, launch_dir)
-        return self.entity(IncludeLaunchDescription(
+        return self.add_action(IncludeLaunchDescription(
             AnyLaunchDescriptionSource(launch_file),
             launch_arguments=adapt_type(launch_arguments, LAUNCH_ARGS)))
 
-    def service(self, server, request = None):
+    def call_service(self, server, request = None, verbose = False):
         '''
-        Wrapper around service call.
         Calls the service at server address after checking its type.
         Request is a dictionary that is forwarded to service request fields, assuming they match
         '''
+        params = {'simple_launch.server': server, 'simple_launch.verbose': verbose}
         if request is not None:
-            self.node('simple_launch', 'service_wrapper', parameters = [{'server':server}, request])
-        else:
-            self.node('simple_launch', 'service_wrapper', parameters = [{'server':server}])
+            params.update(request)
+        return self.node('simple_launch', 'call_service', parameters = params)
+
+    def set_parameters(self, node_name, parameters: dict = {}, verbose = False):
+        '''
+        Sets the requested parameters for this node
+        '''
+        return self.node('simple_launch', 'set_parameters',
+                  parameters = parameters | {'simple_launch.node': node_name, 'simple_launch.keys': list(parameters.keys()), 'simple_launch.verbose': verbose},
+                  output='screen')
 
     def rviz(self, config_file = None, warnings = False):
         '''
@@ -555,7 +569,7 @@ class SimpleLauncher:
             from tempfile import NamedTemporaryFile
             dst = NamedTemporaryFile().name
 
-            self.entity(ExecuteProcess(cmd=['echo ', SimpleSubstitution('"',std_config,'"'), ' >> ', dst],
+            self.add_action(ExecuteProcess(cmd=['echo ', SimpleSubstitution('"',std_config,'"'), ' >> ', dst],
                                     shell=True, name=SimpleSubstitution(name, '_config')))
             self.node(f'{ros_gz}_bridge', 'parameter_bridge', name=name,
                         parameters = {'config_file': dst})
@@ -614,9 +628,13 @@ class SimpleLauncher:
         if only_new:
             if self.has_context():
                 if not GazeboBridge.has_model(name):
-                    self.entity(node)
+                    self.add_action(node)
             else:
                 with self.group(unless_condition = GazeboBridge.has_model(name)):
-                    self.entity(node)
+                    self.add_action(node)
         else:
-            self.entity(node)
+            self.add_action(node)
+
+    # backward compatibilites for new syntax
+    service = call_service
+    entity = add_action

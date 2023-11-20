@@ -9,10 +9,10 @@ delay = node.declare_parameter('delay', 0.).value
 what = node.declare_parameter('what', '').value
 
 if what:
-    node.get_logger().warn(f'I am starting {what}')
-node.get_logger().warn(f'waiting for {delay} s')
+    node.get_logger().info(f'I am starting {what}')
+node.get_logger().info(f'waiting for {delay} s')
 time.sleep(delay)
-print('exit')
+node.get_logger().info('exit')
 
 node.destroy_node()
 

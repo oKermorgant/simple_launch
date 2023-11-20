@@ -39,23 +39,24 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 This line runs a temporary client that waits for a service and calls it when available:
 
-`sl.call_service(server, request = None)` where
+`sl.call_service(server, request = None, verbose = False)` where
 
-- `server` is the path to some service
+- `server` is the path to some service (possibly namespaced). The service type is deduced when it becomes available.
 - `request` is a dictionary representing the service request. If `None` or incomplete, will use the service request default values.
+- `verbose` let the underlying node describe what it is doing
 
 If any request parameter is `__ns` it will be changed to the current namespace.
 
-The service type is deduced when it becomes available.
 
 ### Setting parameters
 
 This line runs a temporary client that waits for a node and changes its parameters when available:
 
-`sl.set_parameters(node_name, parameters: dict = {})` where
+`sl.set_parameters(node_name, parameters: dict = {}, verbose = False)` where
 
 - `node_name` is the name of the node (possibly namespaced)
 - `parameters` is a dictionary of (name, value) parameters to be set
+- `verbose` let the underlying node describe what it is doing
 
 This calls the `set_parameters` service of the node with the passed types. Possible errors may happen if the parameters do not exist or are of a different type.
 
@@ -70,13 +71,12 @@ In the launch API, differents types are expected for:
 
 The `sl.include`, `sl.node` and `xacro_args` calls allow using any type (the simplest being a single dictionary)  and will convert to the one expected by the API.
 
-### `SimpleSubstution` class
-
-Most all methods listed below return an instance of `SimpleSubstitution` that wraps any Substitution, but that provides concatenation (`+`) and path concatenation (`/`) operators. It is still a `Substitution`, not a raw Python type.
 
 ## Launch arguments
 
-The helper class allows declaring launch arguments and getting them in return:
+`simple_launch` allows declaring launch arguments and getting them in return.
+
+Most all methods listed below return an instance of `SimpleSubstitution` that represents any Substitution, but that provides concatenation (`+`) and path concatenation (`/`) operators. It is still a `Substitution`, not a raw Python type. If run from an `OpaqueFunction` the underlying Python variable is returned.
 
 ### Declare a launch argument
 
@@ -92,7 +92,7 @@ The helper class allows declaring launch arguments and getting them in return:
 
 Typical when forwarding some launch arguments to a node or an included launch file.
 
-## Node groups
+## Logic groups
 
 Groups are created through the `with sl.group():` syntax and accept, a namespace an if/unless condition and an event:
 
@@ -138,15 +138,18 @@ If `if_arg` / `unless_arg` is not a string then it is considered as a `if_condit
 The `when` argument wraps events from the `launch.event_handlers` module. It combine an event and a delay (0 by default)
 
 ```
-from simple_launch.events import When, OnProcessStart, OnProcessExit
+from simple_launch.events import After, OnProcessStart, OnProcessExit
 
     my_node = sl.node(...)   # reference node
 
-    with sl.group(when = When(my_node, OnProcessStart, 1.)):
+    with sl.group(when = After(my_node, OnProcessStart, 1.)):
         sl.node(...)  # will run 1 s after main node starts
 
-    with sl.group(when = When(my_node, OnProcessExit)):
+    with sl.group(when = After(my_node, OnProcessExit)):
         sl.node(...)  # will run as soon as the main node exists
+
+    with sl.group(when = After(delay = 2.)):
+        sl.node(...)  # will run after 2 sec
 ```
 
 
@@ -164,8 +167,8 @@ Use the `executable` and `package` parameters if you want to use executors other
 ```
   with sl.container(name='my_container', output='screen', executable='component_container_isolated'):
 ```
-***It is currently impossible to have group blocks within a container block, as containers can only accept `ComposableNode`s***
 
+***It is currently impossible to have group blocks within a container block, as containers can only accept `ComposableNode`s***
 
 
 ## `use_sim_time`
@@ -328,7 +331,7 @@ If `file_name` is `None` then the function just returns the path to the package 
 
 ### Fallback to low-level syntax
 
-If any unavailable functionality is needed, the `sl.entity(entity)` function adds any passed `Entity` at the current namespace / conditional / composition level.
+If any unavailable functionality is needed, the `sl.add_action(action)` function adds any passed `Action` at the current namespace / conditional / event level.
 
 
 ## Examples

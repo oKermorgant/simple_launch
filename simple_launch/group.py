@@ -1,22 +1,33 @@
 from launch_ros.actions import PushRosNamespace
 from launch.actions import GroupAction
-from .events import When
-
+from launch import Action
+from .events import After
+from . import console
 
 class Group:
 
     def __init__(self, ns=None, condition=None, container='',
                  parent = None,
-                 when: When = None):
+                 when: After = None):
 
         self.__parent = parent
-        self.__actions = []
         self.__condition = condition
         self.__container = container
         self.__when = when
 
-        if ns is not None:
-            self.add_action(PushRosNamespace(ns))
+        # inherit namespace from this branch
+        ns = [ns] if ns is not None else []
+        if parent is None:
+            self.__root = self
+            self.__ns = ns
+        else:
+            self.__root = parent.__root
+            self.__ns = parent.__ns + ns
+
+        # actions are always active and added to the root group
+        self.__actions = []
+        # managed are added as Event or Containers
+        self.__managed = []
 
     def is_container(self):
         return self.__container
@@ -33,11 +44,20 @@ class Group:
 
         # closing a classical group, potentially with event handling
         if self.__actions:
-            group = GroupAction(self.__actions, condition=self.__condition)
-            if self.__when is not None:
-                self.__parent.add_action(self.__when.wrap(group))
+
+            # check consistensy
+
+            if any(not isinstance(action, Action) for action in self.__actions):
+                # probably a function call due to OnProcessIO
+                # skip GroupAction as it is not callable
+                group = self.__actions
             else:
-                self.__parent.add_action(group)
+                ns_tree = list(map(PushRosNamespace, self.__ns))
+                group = GroupAction(ns_tree + self.__actions, condition=self.__condition)
+            if self.__when is not None:
+                self.__root.add_action(self.__when.register(group))
+            else:
+                self.__root.add_action(group)
 
         return self.__parent
 

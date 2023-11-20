@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+
+import rclpy
+from rclpy.node import Node
+import sys
+from random import choice
+from string import ascii_letters
+from rcl_interfaces.srv import SetParameters
+
+rclpy.init(args=None)
+node = Node('set_parameters_' + ''.join(choice(ascii_letters) for _ in range(8)),
+            automatically_declare_parameters_from_overrides = True)
+
+target_node = node.get_parameter('simple_launch.node').value
+# get which parameters are to be set
+params = node.get_parameter('simple_launch.keys').value
+
+if not target_node:
+    sys.exit(0)
+
+# wait for set param server
+param_client = node.create_client(SetParameters, target_node + '/set_parameters')
+param_client.wait_for_service()
+
+# declare and get them values
+target_params = [node.get_parameter(name) for name in params]
+if node.get_parameter('simple_launch.verbose').value:
+    node.get_logger().info(f'Setting parameters for {target_node}: {", ".join(params)}')
+
+# convert to SetParam request and call
+request = SetParameters.Request()
+request.parameters = [param.to_parameter_msg() for param in target_params]
+
+res = param_client.call_async(request)
+
+while not res.done():
+    rclpy.spin_once(node)
+
+node.destroy_node()
+rclpy.shutdown()
