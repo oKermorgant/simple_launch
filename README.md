@@ -566,6 +566,8 @@ def generate_launch_description():
 
 ## I want more examples
 
-Other self-contained examples (and slides) have been used to teach the ROS 2 launch file system.
+Other self-contained examples (and slides) have been used to teach the ROS 2 launch file system and the nav stack.
 
-They are available in the [anf_launch](https://github.com/oKermorgant/anf_launch) package.
+Various aspects of the launch systen are shown in the [anf_launch](https://github.com/oKermorgant/anf_launch) package.
+
+A simple tutorial on `Nav2`  using `simple_launch` is available in the [anf_nav](https://github.com/oKermorgant/anf_nav) package.
