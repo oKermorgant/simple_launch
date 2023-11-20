@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.8.0 (2023-11-20)
+------------------
 * sync documentation and examples
 * when instead of after for events
 * scoped events
