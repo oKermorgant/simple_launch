@@ -1,12 +1,10 @@
 # This file does the same as https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Event-Handlers.html#event-handlers-example-launch-file
 
-
 from launch.actions import (EmitEvent, LogInfo)
-from launch.event_handlers import (OnExecutionComplete, OnProcessIO)
 from launch.events import Shutdown
 from launch.substitutions import (EnvironmentVariable, LocalSubstitution)
 from simple_launch import SimpleLauncher
-from simple_launch.events import When, OnProcessExit, OnProcessStart, OnShutdown
+from simple_launch.events import When, OnProcessExit, OnProcessStart, OnShutdown, OnExecutionComplete, OnProcessIO
 
 
 def generate_launch_description():
@@ -38,12 +36,12 @@ def generate_launch_description():
             sl.log_info([EnvironmentVariable(name='USER'),' closed the turtlesim window']),
             sl.add_action(EmitEvent(event=Shutdown(reason='Window closed')))
 
-        # this triggers will activate only if verbose
+        # these actions will activate only if verbose, otherwise the spawn is silent
         with sl.group(when = When(spawn_turtle, OnProcessIO, io='stdout')):
             sl.add_action(lambda event: sl.log_info('Spawn request says "{}"'.format(
                         event.text.decode().strip())))
             sl.add_action(lambda event: LogInfo(
-                    msg='Spawn request really says "{}"'.format(
+                    msg='Once again, spawn request says "{}"'.format(
                         event.text.decode().strip())))
 
         with sl.group(when = When(event = OnShutdown)):
