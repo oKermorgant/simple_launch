@@ -21,6 +21,6 @@ def generate_launch_description():
         # prefix with xacro, ok if the xacro file was written with prefix in mind
         sl.robot_state_publisher('simple_launch', 'turret.xacro', xacro_args = xacro_args)
 
-        sl.joint_state_publisher(sources_list = ['source_joints'], use_gui = use_gui)
+        sl.joint_state_publisher(use_gui = use_gui)
 
     return sl.launch_description()

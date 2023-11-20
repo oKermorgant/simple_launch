@@ -76,7 +76,7 @@ The `sl.include`, `sl.node` and `xacro_args` calls allow using any type (the sim
 
 `simple_launch` allows declaring launch arguments and getting them in return.
 
-Most all methods listed below return an instance of `SimpleSubstitution` that represents any Substitution, but that provides concatenation (`+`) and path concatenation (`/`) operators. It is still a `Substitution`, not a raw Python type. If run from an `OpaqueFunction` the underlying Python variable is returned.
+Methods listed below return instances of `SimpleSubstitution` that represents any Substitution, but that provides concatenation (`+`) and path concatenation (`/`) operators. It is still a `Substitution`, not a raw Python type. If run from an `OpaqueFunction` the underlying Python variable is returned.
 
 ### Declare a launch argument
 
@@ -92,9 +92,11 @@ Most all methods listed below return an instance of `SimpleSubstitution` that re
 
 Typical when forwarding some launch arguments to a node or an included launch file.
 
-## Logic groups
+## Groups or scopes
 
-Groups are created through the `with sl.group():` syntax and accept, a namespace an if/unless condition and an event:
+Groups are created through the `with sl.group():` syntax and accept, a namespace an if/unless condition and an event.
+
+Actions that are added in a scope inherit from all previous defined groups.
 
 ### By namespace
 
@@ -112,7 +114,8 @@ Groups are created through the `with sl.group():` syntax and accept, a namespace
   with sl.group(unless_condition=<some expression>):
     sl.node(package, executable)
 ```
-Only one condition can be set in a group, nested condition must be combined first, or used in nested groups.
+- Only one condition can be set in a group, nested condition must be combined first, or used in nested groups.
+- Combining conditions is work in progress as [only the underlying `Substitution`s can be combined](https://answers.ros.org/answers/414006/revisions/).
 
 ### From conditional arguments
 
@@ -133,31 +136,31 @@ Only one condition can be set in a group, nested condition must be combined firs
 If `if_arg` / `unless_arg` is not a string then it is considered as a `if_condition` / `unless_condition`.
 
 
-### From events (work in progress, API subject to change)
+### From events
 
 The `when` argument wraps events from the `launch.event_handlers` module. It combines an event and a delay (0 by default)
 
 ```
-from simple_launch.events import When, OnProcessStart, OnProcessExit
+from simple_launch.events import When, OnProcessStart, OnProcessExit, OnProcessIO
 
-    my_node = sl.node(...)   # reference node
+  my_node = sl.node(...)   # reference node
 
-    with sl.group(when = When(my_node, OnProcessStart, 1.)):
-        sl.node(...)  # will run 1 s after main node starts
+  with sl.group(when = When(my_node, OnProcessStart, 1.)):
+      sl.node(...)  # will run 1 s after main node starts
 
-    with sl.group(when = When(my_node, OnProcessExit)):
-        sl.node(...)  # will run as soon as the main node exists
+  with sl.group(when = When(my_node, OnProcessExit)):
+      sl.node(...)  # will run as soon as the main node exists
 
-    with sl.group(when = When(my_node, OnProcessIO, io = 'stdout'):
-        # OnProcessIO events need a function changing the event into an action
-        sl.add_action(lambda event: LogInfo(msg = 'Spawn request says "{}"'.format(
-                        event.text.decode().strip())))
-        # several functions can be used if needed, they will be combined in a single one
-        sl.add_action(lambda event: LogInfo(msg = 'Once again, spawn request says "{}"'.format(
-                        event.text.decode().strip())))
+  with sl.group(when = When(my_node, OnProcessIO, io = 'stdout'):
+      # OnProcessIO events need a function changing the event into an action
+      sl.add_action(lambda event: LogInfo(msg = 'Node says "{}"'.format(
+                      event.text.decode().strip())))
+      # several functions can be used if needed, they will be combined in a single one
+      sl.add_action(lambda event: LogInfo(msg = 'Once again, node says "{}"'.format(
+                      event.text.decode().strip())))
 
-    with sl.group(when = When(delay = 2.)):
-        sl.node(...)  # will run after 2 sec
+  with sl.group(when = When(delay = 2.)):
+      sl.node(...)  # will run after 2 sec
 ```
 
 
@@ -176,7 +179,7 @@ Use the `executable` and `package` parameters if you want to use executors other
   with sl.container(name='my_container', output='screen', executable='component_container_isolated'):
 ```
 
-***It is currently impossible to have group blocks within a container block, as containers can only accept `ComposableNode`s*** that are not compatible to the namespace or condition logic of simple groups.
+***It is currently impossible to have group blocks within a container block, as containers can only accept `ComposableNode`s***. A `GroupAction` containing e.g. `PushRosNamespace` and a `ComposableNode` is not itself a `ComposableNode`.
 
 
 ## `use_sim_time`
@@ -190,12 +193,13 @@ The current `use_sim_time` setting can be retrieved through `sl.sim_time` that m
 In all cases, if the `use_sim_time` parameter is explicitely given to a node, it will be used instead of the `SimpleLauncher` instance one.
 
 
-## Wrapper around `OpaqueFunction`
+## `OpaqueFunction` with implicit `.perform(context)`
 
 Most of the use cases can be dealt with substitutions and `with sl.group` blocks.
 In order to design more imperative launch files, the [`OpaqueFunction`](https://discourse.ros.org/t/simplifying-launch-argument-declaration-and-initialization-in-launch-files/24204) approach can be used. The main drawback is that potential errors are harder to track.
 
 To do this with `simple_launch`:
+
   - the `SimpleLauncher` instance and the argument declaration should be done in the main body of your launch file.
   - then, define a function (e.g. `launch_setup`) that takes no argument, where the logic of the launch file resides.
   - all arguments obtained through `sl.arg` will be basic Python types, obtained from performing the substitutions.
@@ -314,7 +318,7 @@ Obviously if all the path elements are raw strings, you should use `os.path.join
 - `file_name` is the name of the file to find
 - `file_dir` is the path inside the package
 
-If `file_dir` is `None` then the `find` function will actually look for the file inside the package share, assuming that `package` and `file_name` are raw strings.
+If `file_dir` is `None` but `package` and `file_name` are raw strings then the `find` function will actually look for the file inside the package share, using `os.walk`.
 
 If `file_name` is `None` then the function just returns the path to the package share directory (e.g. `get_package_share_directory(package)`)
 
@@ -324,7 +328,7 @@ If `file_name` is `None` then the function just returns the path to the package 
 
 - `description_file` is a URDF or xacro file
 - `description_dir` is the sub-directory of the file. If omitted, let the script search for the file assuming it is a raw string
-- `xacro_args` are passed to xacro
+- `xacro_args` is a dictionary of arguments to forward to xacro
 - `prefix_gz_plugins` is used only if a `frame_prefix` parameter is given to `robot_state_publisher`. In this case it will forward the frame prefix to Gazebo-published messages that include frame names
 - `node_args` are any additional arguments for `robot_state_publisher` (typically remapping)
 
@@ -335,6 +339,8 @@ If `file_name` is `None` then the function just returns the path to the package 
 ### Rviz
 
 `sl.rviz(config_file = None, warnings = False)`: runs RViz on the given configuration file. If `warnings` is `False` (default) then runs with `log-level FATAL` in order to avoid many messages in the console.
+
+Classical use case: `sl.rviz(sl.find('my_package', 'some_rviz_config.rviz'))`
 
 
 ### Fallback to low-level syntax
@@ -369,11 +375,11 @@ def generate_launch_description():
     sl.declare_arg('use_gui', default_value = True, description='Use JSP gui')
 
     xacro_args = sl.arg_map('prefix', 'x', 'y')
-    xacro_args['prefix'] = [xacro_args['prefix'], ':']
+    xacro_args['prefix'] += '/'  # can sum substitutions and strings
 
     with sl.group(ns=sl.arg('prefix')):
         sl.robot_state_publisher('simple_launch', 'turret.xacro', xacro_args = xacro_args)
-        sl.joint_state_publisher(sources_list = ['source_joints'], use_gui = sl.arg('use_gui'))
+        sl.joint_state_publisher(use_gui = sl.arg('use_gui'))
 
     return sl.launch_description()
 ```

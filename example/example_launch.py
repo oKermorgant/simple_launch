@@ -26,6 +26,6 @@ def generate_launch_description():
             sl.include('simple_launch', 'included_launch.py', launch_arguments=args)
 
     with sl.group(if_arg='rviz'):
-        sl.rviz(sl.find('simple_launch', 'turret.rviz')
+        sl.rviz(sl.find('simple_launch', 'turret.rviz'))
 
     return sl.launch_description()
