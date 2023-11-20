@@ -493,8 +493,9 @@ def generate_launch_description():
     return sl.launch_description()
 ```
 
-<!-- ## Events and parameters -->
+## Events and parameters
 
+This [example file](example/event_tutorial_launch.py) is another way to write the [event launch example](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Event-Handlers.html).
 
 
 ### auto sim time
