@@ -34,9 +34,9 @@ def generate_launch_description():
             with sl.group(if_arg = 'use_provided_red', when = When(delay=2.)):
                 sl.set_parameters('sim', {'background_r': new_background_r})
 
-        #with sl.group(when = When(sim, OnProcessExit)):
-            #sl.log_info([EnvironmentVariable(name='USER'),' closed the turtlesim window']),
-            #sl.add_action(EmitEvent(event=Shutdown(reason='Window closed')))
+        with sl.group(when = When(sim, OnProcessExit)):
+            sl.log_info([EnvironmentVariable(name='USER'),' closed the turtlesim window']),
+            sl.add_action(EmitEvent(event=Shutdown(reason='Window closed')))
 
         # this triggers will activate only if verbose
         with sl.group(when = When(spawn_turtle, OnProcessIO, io='stdout')):
