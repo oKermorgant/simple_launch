@@ -15,12 +15,12 @@ def generate_launch_description():
     # load Listener into existing container if corresponding arg is True
     # loaded in a namespace but topic is remapped
     with sl.group(ns = 'other_ns', if_arg='listener1'):
-        with sl.container(name='my_container', existing=True):
+        with sl.container(name='/my_container', existing=True):
             sl.node(package='composition', plugin='Listener', name='listener1',
                     remappings = {'chatter': '/chatter'})
 
     # defining groups in containers does not work as below
-    # ComposableNode are added in pure Python logic
+    # ComposableNode are added in pure Python logic and cannot inherit from any namespace or condition
     '''
     with sl.container(name='my_container', existing=True):
         with sl.group(ns = 'ns2', if_arg='listener2'):

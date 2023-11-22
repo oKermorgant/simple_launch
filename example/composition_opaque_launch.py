@@ -20,7 +20,7 @@ def launch_setup():
 
     # defining groups in containers with Python logic
     if sl.arg('listener2'):
-        with sl.container(name='my_container', existing=True):
+        with sl.container(name='/my_container', existing=True):
             sl.node(package='composition', plugin='Listener', name='listener2',
                         remappings = {'chatter': '/chatter'},
                         namespace = 'ns2')
