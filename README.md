@@ -497,6 +497,37 @@ generate_launch_description = sl.launch_description(opaque_function = launch_set
 ```
 
 
+### Combining conditions
+
+The file below shows how to use `sl.condition` to combine conditions:
+
+```
+from simple_launch import SimpleLauncher
+
+
+def generate_launch_description():
+
+    sl = SimpleLauncher()
+
+    cond1 = sl.declare_arg('cond1', True)
+    cond2 = sl.declare_arg('cond2', False)
+
+    for logic in ('and', 'or'):
+
+        # builds <cond1> <logic> <cond2> Python expression
+        combined = sl.condition(cond1, f' {logic} ', cond2)
+
+        sl.log_info([f'{logic} condition is ', combined])
+
+        with sl.group(if_condition = combined):
+            sl.node('demo_nodes_cpp', 'talker', name = f'talker_{logic}')
+
+        # also works with sl.node(..., condition = IfCondition(combined))
+
+    return sl.launch_description()
+```
+
+
 ### Composition
 
 The file below is another way to write the [composition launch example](https://index.ros.org/doc/ros2/Tutorials/Composition/#composition-using-launch-actions):

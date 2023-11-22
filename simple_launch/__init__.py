@@ -229,7 +229,7 @@ class SimpleLauncher:
     def py_eval(self, *elems):
         '''
         Evaluates the Python expression
-        Make sure Boolean are in Pythonic case when calling...
+        Make sure Boolean are in Pythonic case when calling
         '''
         return self.try_perform(SimpleSubstitution(PythonExpression(elems)))
 
