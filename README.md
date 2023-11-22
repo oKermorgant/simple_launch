@@ -114,8 +114,9 @@ Actions that are added in a scope inherit from all previous defined groups.
   with sl.group(unless_condition=<some expression>):
     sl.node(package, executable)
 ```
+
 - Only one condition can be set in a group, nested condition must be combined first, or used in nested groups.
-- Combining conditions is work in progress as [only the underlying `Substitution`s can be combined](https://answers.ros.org/answers/414006/revisions/).
+- Combining conditions coming from launch arguments can be done with `sl.py_eval` as shown below.
 
 ### From conditional arguments
 
@@ -279,16 +280,16 @@ sl.declare_arg('color', [255,0,0])
 xacro_color = "'" + sl.py_eval("' '.join(str(c/255) for c in ", sl.arg('color'), ')') + "'"
 ```
 
-If an argument is a lower-case `true` or `false` this will likely raise an error as they are not Python values.
-
 ### Conditions
 
-`sl.condition` will evaluate the given arguments as a Python condition, possibly performed if in an Opaque Function. It is robust to lower case `true` or `false`.
+`sl.py_eval` can be used to combine conditions. It is robust to lower case `true` or `false` and will return a `SimpleSubstitution`.
 
 ```
 sl.declare_arg('some_condition', True)
-opposed = sl.condition('not ', sl.arg('some_condition'))
+opposed = sl.py_eval('not ', sl.arg('some_condition'))
 ```
+
+Note that `IfCondition` and `UnlessCondition` cannot be combined, [only the underlying `Substitution`s can](https://answers.ros.org/answers/414006/revisions/).
 
 ### Joint state publisher
 
@@ -499,11 +500,10 @@ generate_launch_description = sl.launch_description(opaque_function = launch_set
 
 ### Combining conditions
 
-The file below shows how to use `sl.condition` to combine conditions:
+The file below shows how to use `sl.py_eval` to combine conditions. We have to build a valid Python expression, not forgetting the spaces around `and`/`or`.
 
 ```
 from simple_launch import SimpleLauncher
-
 
 def generate_launch_description():
 
@@ -515,7 +515,7 @@ def generate_launch_description():
     for logic in ('and', 'or'):
 
         # builds <cond1> <logic> <cond2> Python expression
-        combined = sl.condition(cond1, f' {logic} ', cond2)
+        combined = sl.py_eval(cond1, f' {logic} ', cond2)
 
         sl.log_info([f'{logic} condition is ', combined])
 

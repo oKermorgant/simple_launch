@@ -10,7 +10,7 @@ def generate_launch_description():
 
     for logic in ('and', 'or'):
 
-        combined = sl.condition(cond1, f' {logic} ', cond2)
+        combined = sl.py_eval(cond1, f' {logic} ', cond2)
 
         sl.log_info([f'{logic} condition is ', combined])
 

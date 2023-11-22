@@ -15,8 +15,12 @@ def flatten(nested):
     return [elem for elem in nested if elem is not None]
 
 
-def is_basic(elem):
+def is_basic(elem) -> bool:
     return isinstance(elem, (Text, bool, int, float))
+
+
+def is_none(elem) -> bool:
+    return elem is None or (isinstance(elem, SimpleSubstitution) and elem.__subs and all([sub is None for sub in elem.__subs]))
 
 
 class SimpleSubstitution(Substitution):
@@ -40,10 +44,6 @@ class SimpleSubstitution(Substitution):
             return subs[:-1]+head, tail
         return subs[:-1], subs[-1]
 
-    @staticmethod
-    def is_none(elem) -> bool:
-        return elem is None or (isinstance(elem, SimpleSubstitution) and elem.__subs and all([sub is None for sub in elem.__subs]))
-
     def substitutions(self) -> List:
         return flatten(self.__subs)
 
@@ -53,26 +53,26 @@ class SimpleSubstitution(Substitution):
     def perform(self, context: LaunchContext) -> Text:
         return ''.join(str(sub) if is_basic(sub) else sub.perform(context) for sub in self.substitutions())
 
-    def __add__(self, other):
+    def __add__(self, other) -> 'SimpleSubstitution':
         return SimpleSubstitution([self.__subs, other])
 
-    def __iadd__(self, other):
+    def __iadd__(self, other) -> 'SimpleSubstitution':
         self = self + other
         return self
 
-    def __radd__(self, other):
+    def __radd__(self, other) -> 'SimpleSubstitution':
         return SimpleSubstitution([other, self.__subs])
 
-    def __truediv__(self, other):
-        if self.is_none(other):
+    def __truediv__(self, other) -> 'SimpleSubstitution':
+        if is_none(other):
             return self
         return SimpleSubstitution([self.__subs, sep, other])
 
-    def __rtruediv__(self, other):
-        if self.is_none(other):
+    def __rtruediv__(self, other) -> 'SimpleSubstitution':
+        if is_none(other):
             return self
         return SimpleSubstitution([other, sep, self.__subs])
 
-    def __itruediv__(self, other):
+    def __itruediv__(self, other) -> 'SimpleSubstitution':
         self = self / other
         return self

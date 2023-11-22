@@ -115,7 +115,7 @@ class SimpleLauncher:
         '''
         Add an argument to the launch file
         '''
-        if self.has_context():
+        if self.__has_context():
             console.error(f'declaring a launch argument "{name}" while inside an opaque function\nyou should declare the arguments before the function')
 
         self.__groups[0].add_action(DeclareLaunchArgument(
@@ -132,22 +132,6 @@ class SimpleLauncher:
         '''
         from os import environ
         return environ['ROS_DISTRO']
-
-    def declare_gazebo_axes(self, **axes):
-        '''
-        Declares classical Gazebo axes as launch arguments
-        If axes is void then declares all 6 axes with default value 0
-        Otherwise declares the given axes with the given defaults
-        '''
-        if len(axes):
-            self.gz_axes = [axis for axis,_ in axes.items() if axis in self.gz_axes]
-            for axis in self.gz_axes:
-                self.declare_arg(axis, default_value=axes[axis])
-            return
-        # no axis specified,
-        self.gz_axes = ('x','y','z','yaw','pitch','roll')
-        for axis in self.gz_axes:
-            self.declare_arg(axis, default_value=0.)
 
     def arg(self, name):
         '''
@@ -178,9 +162,9 @@ class SimpleLauncher:
         if opaque_function is None:
             # classical call without opaque function
             main_actions = self.__cur_group.close()
-            return main_actions if self.has_context() else LaunchDescription(main_actions)
+            return main_actions if self.__has_context() else LaunchDescription(main_actions)
 
-        if self.has_context():
+        if self.__has_context():
             # opaque function but we already have context
             console.error('Calling SimpleLauncher.launch_description with opaque function within an opaque function makes it really opaque')
 
@@ -197,14 +181,14 @@ class SimpleLauncher:
 
         return generate_launch_description
 
-    def has_context(self):
+    def __has_context(self) -> bool:
         return self.__context is not None
 
     def try_perform(self, substitution):
         '''
         Returns the performed value if the context is defined, otherwise the substitution
         '''
-        if isinstance(substitution, Text) or not self.has_context():
+        if isinstance(substitution, Text) or not self.__has_context():
             return substitution
 
         from ast import literal_eval
@@ -218,37 +202,14 @@ class SimpleLauncher:
             pass
         return performed
 
-    def condition(self, *elems):
-        '''
-        Evaluates the Python expression, forcing Boolean types
-        '''
-        expr = list(map(stringify, elems))
-        expr = SimpleSubstitution("eval('", expr, "'.replace('true', 'True').replace('false', 'False'))")
-        return self.try_perform(SimpleSubstitution(PythonExpression(expr)))
-
     def py_eval(self, *elems):
         '''
         Evaluates the Python expression
-        Make sure Boolean are in Pythonic case when calling
         '''
-        return self.try_perform(SimpleSubstitution(PythonExpression(elems)))
-
-    def name_join(self, *elems):
-        return self.try_perform(SimpleSubstitution(elems))
-
-    def gazebo_axes_args(self):
-        '''
-        Generate arguments corresponding to Gazebo spawner
-        '''
-        axes = {'x': 'x', 'y': 'y', 'z': 'z', 'roll': 'R', 'pitch': 'P', 'yaw': 'Y'}
-        args = flatten([['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes])
-        return [stringify(arg) for arg in args]
-
-    def path_join(self, *pathes):
-        ret = SimpleSubstitution()
-        for elem in pathes:
-            ret /= elem
-        return self.try_perform(ret)
+        # add a small check on lower case when combining conditions
+        # TODO make it robust to forgotten spaces in and/or/not without relying on str.replace
+        expr = SimpleSubstitution('eval("',elems,'", {"true": True, "false": False})')
+        return self.try_perform(SimpleSubstitution(PythonExpression(expr)))
 
     def find(self, package, file_name=None, file_dir = None):
         '''
@@ -536,6 +497,30 @@ class SimpleLauncher:
 
 # Gazebo / Ignition methods
 
+    def declare_gazebo_axes(self, **axes):
+        '''
+        Declares classical Gazebo axes as launch arguments
+        If axes is void then declares all 6 axes with default value 0
+        Otherwise declares the given axes with the given defaults
+        '''
+        if len(axes):
+            self.gz_axes = [axis for axis,_ in axes.items() if axis in self.gz_axes]
+            for axis in self.gz_axes:
+                self.declare_arg(axis, default_value=axes[axis])
+            return
+        # no axis specified,
+        self.gz_axes = ('x','y','z','yaw','pitch','roll')
+        for axis in self.gz_axes:
+            self.declare_arg(axis, default_value=0.)
+
+    def gazebo_axes_args(self):
+        '''
+        Generate arguments corresponding to Gazebo spawner
+        '''
+        axes = {'x': 'x', 'y': 'y', 'z': 'z', 'roll': 'R', 'pitch': 'P', 'yaw': 'Y'}
+        args = flatten([['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes])
+        return [stringify(arg) for arg in args]
+
     @staticmethod
     def gz_prefix():
         return 'ign' if SimpleLauncher.ros_version() < 'humble' else 'gz'
@@ -634,7 +619,7 @@ class SimpleLauncher:
         node = Node(package = pkg, executable = 'create', arguments=spawn_args)
 
         if only_new:
-            if self.has_context():
+            if self.__has_context():
                 if not GazeboBridge.has_model(name):
                     self.add_action(node)
             else:
@@ -643,6 +628,17 @@ class SimpleLauncher:
         else:
             self.add_action(node)
 
-    # backward compatibilites for new syntax
+    # deprecated section
+
+    def name_join(self, *elems):
+        return self.try_perform(SimpleSubstitution(elems))
+
+    def path_join(self, *pathes):
+        ret = SimpleSubstitution()
+        for elem in pathes:
+            ret /= elem
+        return self.try_perform(ret)
+
+    # backward compatibility for new syntax
     service = call_service
     entity = add_action
