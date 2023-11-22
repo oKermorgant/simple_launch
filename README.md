@@ -323,7 +323,9 @@ The given `gz_arguments`, if any, will be forwarded either as the `ign_args` or 
 
 ### Spawn a model
 
-The `sl.spawn_gz_model(name, topic, model_file = None, spawn_args = [], only_new = True)` functions allows easily spawing a model from its `robot_description`:
+The following function allows easily spawing a model from its `robot_description`:
+
+`sl.spawn_gz_model(name, topic, model_file = None, spawn_args = [], only_new = True)`
 
 - `name` is the name this model will get in Gazebo
 - `topic` is the topic to obtain the model from, default is `robot_description` (relative to the current namespace)
@@ -335,7 +337,7 @@ The `sl.spawn_gz_model(name, topic, model_file = None, spawn_args = [], only_new
 
 ### Declare initial pose
 
-Calling `sl.declare_gazebo_axes()` will declare all 6 parameters `(x,y,z,roll,pitch,yaw)` with null default values.
+Calling `sl.declare_gazebo_axes()` will declare all 6 parameters `(x,y,z,roll,pitch,yaw)` with `0` as default values.
 If any axis is given (e.g. `sl.declare_gazebo_axes(yaw = 3.14)` then only this parameter will be declared.
 
 Such parameters can be retrieved through `sl.gazebo_axes_args()`. As a consequence, it is easy to spawn a model with:
@@ -354,6 +356,8 @@ The `GazeboBridge` class has a few static methods to interact with a **running G
 - `GazeboBridge.model_prefix(model)` builds the Gazebo topic relative to the given model `/world/<world>/model/<model>`
 - `GazeboBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Gazebo already
 
+These methods request information on Gazebo at launch time. If no instance is found, the launch file will probably fail.
+
 ### Gazebo bridge
 
 The `GazeboBridge` class allows easily creating bridges when using Gazebo. Gazebo has to be already running in order to get information on the simulation scene.
@@ -364,12 +368,15 @@ An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>,
 - `GazeboBridge.ros2gz` for ROS -> Gazebo
 - `GazeboBridge.bidirectional` for both
 
-The Gazebo message type is deduced from the ros message type. Remapping will be set to the given `ros_topic`.
+The Gazebo message type is [deduced from the ROS message type](https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge). Remapping will be set to the given `ros_topic`.
 
 The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
 If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used. The corresponding `camera_info` topic will be automatically bridged.
 
+A common instance of the bridge is the clock. This one can be:
 
+- created with `GazeboBridge.clock()`: returns a `GazeboBridge` instance, not added to any node yet
+- or run directly with `sl.create_gz_clock_bridge()` (actually runs `sl.create_gz_bridge([GazeboBridge.clock()])`)
 
 ## Examples
 
@@ -491,7 +498,7 @@ def launch_setup():
     return sl.launch_description()
 
 
-# wrap the opaque_function in the launch description
+# tell SimpleLauncher to rely on the opaque_function in the launch description
 # /!\ no `def generate_launch_description():`
 
 generate_launch_description = sl.launch_description(opaque_function = launch_setup)
@@ -548,7 +555,7 @@ def generate_launch_description():
 
 ### Events and parameters
 
-This [example file](example/event_tutorial_launch.py) is another way to write the [event launch example](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Event-Handlers.html).
+This [example file](example/event_tutorial_launch.py) is another way to write the [event launch example](https://docs.ros.org/en/rolling/Tutorials/Intermediate/Launch/Using-Event-Handlers.html). If does a little more work and is a little smarter, as the passed `new_background_r` is applied as soon as it has a valid value.
 
 
 ### auto sim time
@@ -577,7 +584,7 @@ def generate_launch_description():
 ### Robot description and conditionnal Gazebo bridge
 
 The file below only runs by default a `robot_state_publisher` with `use_sim_time:=False`.
-However, if it is included from another file with `use_sim_time:=True` then it also spawns the robot into Gazebo and run two bridges for joint states and pose.
+However, if it is included from another file with `use_sim_time:=True` then it also spawns the robot into Gazebo and runs two bridges for joint states and pose.
 
 ```
 from simple_launch import SimpleLauncher, GazeboBridge
@@ -598,13 +605,16 @@ def generate_launch_description():
             # only execute this group if use_sim_time was set to True
 
             # spawn in Gazebo at default pose if not already here
-            # uses GazeboBridge.has_model(robot) under the hood and calls ros_ign_gazebo::create
+            # uses GazeboBridge.has_model(robot) under the hood and calls ros_gz_sim::create
             sl.spawn_gz_model(robot)
 
             # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state
             # note the relative ROS topic 'joint_states' that is actually namespaced
             gz_js_topic = GazeboBridge.model_prefix(robot)/'joint_state'
-            js_bridge = GazeboBridge(gz_js_topic, 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros)
+            js_bridge = GazeboBridge(gz_topic = gz_js_topic,
+                                     ros_topic = 'joint_states',
+                                     msg = 'sensor_msgs/JointState',
+                                     direction = GazeboBridge.gz2ros)
 
             # pose publisher bridge @ /model/<robot>
             pose_bridge = GazeboBridge('/model'/robot/'/pose',

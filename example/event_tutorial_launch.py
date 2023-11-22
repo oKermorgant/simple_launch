@@ -13,8 +13,10 @@ def generate_launch_description():
     sl.declare_arg('verbosity', 'reqres')
 
     turtlesim_ns = sl.declare_arg('turtlesim_ns', 'turtlesim1')
-    sl.declare_arg('use_provided_red', False)
-    new_background_r = sl.declare_arg('new_background_r', 200)
+    new_background_r = sl.declare_arg('new_background_r', -1)
+
+    # use provided background if valid
+    provided_red_valid = sl.py_eval('0 <= ', new_background_r, ' <= 255')
 
     with sl.group(ns = turtlesim_ns):
 
@@ -29,7 +31,7 @@ def generate_launch_description():
             sl.log_info('Spawn finished')
             sl.set_parameters('sim', {'background_r': 120})
 
-            with sl.group(if_arg = 'use_provided_red', when = When(delay=2.)):
+            with sl.group(if_condition = provided_red_valid, when = When(delay=2.)):
                 sl.set_parameters('sim', {'background_r': new_background_r})
 
         with sl.group(when = When(sim, OnProcessExit)):
