@@ -1,6 +1,7 @@
 from .simple_substitution import SimpleSubstitution
 from . import console
 
+
 def only_show_args():
     '''
     Returns True if the launch file was launched only to show its arguments
@@ -66,6 +67,7 @@ class GazeboBridge:
 
     @staticmethod
     def read_models():
+
         if GazeboBridge.models is not None:
             return
         if only_show_args():

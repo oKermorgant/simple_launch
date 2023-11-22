@@ -138,8 +138,8 @@ class SimpleLauncher:
         Retrieve an argument
         '''
         if type(name) != str:
-            return self.try_perform(name)
-        return self.try_perform(SimpleSubstitution(LaunchConfiguration(name)))
+            return self.__try_perform(name)
+        return self.__try_perform(SimpleSubstitution(LaunchConfiguration(name)))
 
     def arg_map(self, *names):
         '''
@@ -184,7 +184,7 @@ class SimpleLauncher:
     def __has_context(self) -> bool:
         return self.__context is not None
 
-    def try_perform(self, substitution):
+    def __try_perform(self, substitution):
         '''
         Returns the performed value if the context is defined, otherwise the substitution
         '''
@@ -209,7 +209,7 @@ class SimpleLauncher:
         # add a small check on lower case when combining conditions
         # TODO make it robust to forgotten spaces in and/or/not without relying on str.replace
         expr = SimpleSubstitution('eval("',elems,'", {"true": True, "false": False})')
-        return self.try_perform(SimpleSubstitution(PythonExpression(expr)))
+        return self.__try_perform(SimpleSubstitution(PythonExpression(expr)))
 
     def find(self, package, file_name=None, file_dir = None):
         '''
@@ -631,13 +631,13 @@ class SimpleLauncher:
     # deprecated section
 
     def name_join(self, *elems):
-        return self.try_perform(SimpleSubstitution(elems))
+        return self.__try_perform(SimpleSubstitution(elems))
 
     def path_join(self, *pathes):
         ret = SimpleSubstitution()
         for elem in pathes:
             ret /= elem
-        return self.try_perform(ret)
+        return self.__try_perform(ret)
 
     # backward compatibility for new syntax
     service = call_service

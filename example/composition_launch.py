@@ -16,7 +16,9 @@ def generate_launch_description():
     # loaded in a namespace but topic is remapped
     with sl.group(ns = 'other_ns', if_arg='listener1'):
         with sl.container(name='/my_container', existing=True):
-            sl.node(package='composition', plugin='Listener', name='listener1',
+            sl.node(package='composition',
+                    plugin='Listener',  # could be composition::Listener, package namespace will be added
+                    name='listener1',
                     remappings = {'chatter': '/chatter'})
 
     # defining groups in containers does not work as below
