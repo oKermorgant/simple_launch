@@ -218,14 +218,20 @@ class SimpleLauncher:
             pass
         return performed
 
-    def py_eval(self, *elems):
+    def condition(self, *elems):
         '''
-        Evaluates the Python expression
-        Make sure Boolean are in Pythonic case
+        Evaluates the Python expression, forcing Boolean types
         '''
         expr = list(map(stringify, elems))
         expr = SimpleSubstitution("eval('", expr, "'.replace('true', 'True').replace('false', 'False'))")
         return self.try_perform(SimpleSubstitution(PythonExpression(expr)))
+
+    def py_eval(self, *elems):
+        '''
+        Evaluates the Python expression
+        Make sure Boolean are in Pythonic case when calling...
+        '''
+        return self.try_perform(SimpleSubstitution(PythonExpression(elems)))
 
     def name_join(self, *elems):
         return self.try_perform(SimpleSubstitution(elems))

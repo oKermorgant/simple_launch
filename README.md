@@ -223,6 +223,87 @@ else:
   # do other stuff
 ```
 
+## Other shortcuts
+
+### String / substitution concatenation
+
+The following syntax builds the `SimpleSubstitution` corresponding to `<robot name>.xacro`:
+
+`file_name = sl.arg('robot') + '.xacro'`
+
+*deprecated*: `sl.name_join(sl.arg('robot'), '.xacro')`
+
+### Path concatenation
+
+The following syntax builds the `SimpleSubstitution` corresponding to `<package_path>/urdf/<robot name>.xacro`:
+
+```
+file_name = sl.arg('robot') + '.xacro'
+urdf_file = os.path.join(get_package_share_directory(package),'urdf')/file_name
+```
+Obviously if all the path elements are raw strings, you should use `os.path.join` all along.
+
+*deprecated*: `sl.path_join(get_package_share_directory(package), sl.arg('robot'), '.xacro')`
+
+
+### Find a share file
+
+`path = sl.find(package, file_name = None, file_dir = None)` where:
+
+- `package` is the name of the package or `None` if `file_name` is already an absolute path
+- `file_name` is the name of the file to find
+- `file_dir` is the path inside the package
+
+If `file_dir` is `None` but `package` and `file_name` are raw strings then the `find` function will actually look for the file inside the package share, using `os.walk`.
+
+If `file_name` is `None` then the function just returns the path to the package share directory (e.g. `get_package_share_directory(package)`)
+
+### Robot state publisher
+
+`sl.robot_state_publisher(package, description_file, description_dir=None, xacro_args=None, prefix_gz_plugins=False, **node_args)` where
+
+- `description_file` is a URDF or xacro file
+- `description_dir` is the sub-directory of the file. If omitted, let the script search for the file assuming it is a raw string
+- `xacro_args` is a dictionary of arguments to forward to xacro
+- `prefix_gz_plugins` is used only if a `frame_prefix` parameter is given to `robot_state_publisher`. In this case it will forward the frame prefix to Gazebo-published messages that include frame names
+- `node_args` are any additional arguments for `robot_state_publisher` (typically remapping)
+
+### Python expressions
+
+`sl.py_eval` will evaluate the given arguments as a Python expression, possibly performed if in an Opaque Function.
+
+```
+# RGB color as a list of [0-255] integers
+sl.declare_arg('color', [255,0,0])
+# same color as a string of [0-1] numbers (URDF format), note the padding commas to get a string
+xacro_color = "'" + sl.py_eval("' '.join(str(c/255) for c in ", sl.arg('color'), ')') + "'"
+```
+
+If an argument is a lower-case `true` or `false` this will likely raise an error as they are not Python values.
+
+### Conditions
+
+`sl.condition` will evaluate the given arguments as a Python condition, possibly performed if in an Opaque Function. It is robust to lower case `true` or `false`.
+
+```
+sl.declare_arg('some_condition', True)
+opposed = sl.condition('not ', sl.arg('some_condition'))
+```
+
+### Joint state publisher
+
+`sl.joint_state_publisher(use_gui, **node_args)`: fires up a `joint_state_publisher`, with or without the gui.
+
+### Rviz
+
+`sl.rviz(config_file = None, warnings = False)`: runs RViz on the given configuration file. If `warnings` is `False` (default) then runs with `log-level FATAL` in order to avoid many messages in the console.
+
+Classical use case: `sl.rviz(sl.find('my_package', 'some_rviz_config.rviz'))`
+
+
+### Fallback to low-level syntax
+
+If any unavailable functionality is needed, the `sl.add_action(action)` function adds any passed `Action` at the current namespace / conditional / event level.
 
 ## Interaction with Gazebo / Ignition
 
@@ -287,65 +368,6 @@ The Gazebo message type is deduced from the ros message type. Remapping will be 
 The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
 If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used. The corresponding `camera_info` topic will be automatically bridged.
 
-## Other shortcuts
-
-### String / substitution concatenation
-
-The following syntax builds the `SimpleSubstitution` corresponding to `<robot name>.xacro`:
-
-`file_name = sl.arg('robot') + '.xacro'`
-
-*deprecated*: `sl.name_join(sl.arg('robot'), '.xacro')`
-
-### Path concatenation
-
-The following syntax builds the `SimpleSubstitution` corresponding to `<package_path>/urdf/<robot name>.xacro`:
-
-```
-file_name = sl.arg('robot') + '.xacro'
-urdf_file = os.path.join(get_package_share_directory(package),'urdf')/file_name
-```
-Obviously if all the path elements are raw strings, you should use `os.path.join` all along.
-
-*deprecated*: `sl.path_join(get_package_share_directory(package), sl.arg('robot'), '.xacro')`
-
-
-### Find a share file
-
-`path = sl.find(package, file_name = None, file_dir = None)` where:
-
-- `package` is the name of the package or `None` if `file_name` is already an absolute path
-- `file_name` is the name of the file to find
-- `file_dir` is the path inside the package
-
-If `file_dir` is `None` but `package` and `file_name` are raw strings then the `find` function will actually look for the file inside the package share, using `os.walk`.
-
-If `file_name` is `None` then the function just returns the path to the package share directory (e.g. `get_package_share_directory(package)`)
-
-### Robot state publisher
-
-`sl.robot_state_publisher(package, description_file, description_dir=None, xacro_args=None, prefix_gz_plugins=False, **node_args)` where
-
-- `description_file` is a URDF or xacro file
-- `description_dir` is the sub-directory of the file. If omitted, let the script search for the file assuming it is a raw string
-- `xacro_args` is a dictionary of arguments to forward to xacro
-- `prefix_gz_plugins` is used only if a `frame_prefix` parameter is given to `robot_state_publisher`. In this case it will forward the frame prefix to Gazebo-published messages that include frame names
-- `node_args` are any additional arguments for `robot_state_publisher` (typically remapping)
-
-### Joint state publisher
-
-`sl.joint_state_publisher(use_gui, **node_args)`: fires up a `joint_state_publisher`, with or without the gui.
-
-### Rviz
-
-`sl.rviz(config_file = None, warnings = False)`: runs RViz on the given configuration file. If `warnings` is `False` (default) then runs with `log-level FATAL` in order to avoid many messages in the console.
-
-Classical use case: `sl.rviz(sl.find('my_package', 'some_rviz_config.rviz'))`
-
-
-### Fallback to low-level syntax
-
-If any unavailable functionality is needed, the `sl.add_action(action)` function adds any passed `Action` at the current namespace / conditional / event level.
 
 
 ## Examples
