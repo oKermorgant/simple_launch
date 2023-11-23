@@ -21,11 +21,11 @@ def generate_launch_description():
 
     with sl.group(when = When(node, OnProcessStart, 1.)):
         other_node = waiting_node('other_node', 3,
-                    '1 s When main node starts')
+                    '1 s when main node starts')
 
     with sl.group(ns = 'last_ns', when = When(other_node, OnProcessExit, sl.arg('delay'))):
         last = waiting_node('last', 2,
-                    'When other_node exits and should terminate with main if delay = 4')
+                    'when other_node exits and should terminate with main if delay = 4')
 
     # TODO other events depending on e.g. last
 
