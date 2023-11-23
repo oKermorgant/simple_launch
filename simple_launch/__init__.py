@@ -329,7 +329,7 @@ class SimpleLauncher:
         self.__cur_group.add_action(action)
         return action
 
-    def node(self, package, executable = None, plugin = None, **node_args):
+    def node(self, package = None, executable = None, plugin = None, **node_args):
         '''
         Add a node to the launch tree. If auto_sim_time was used then the use_sim_time parameter will be set if not explicitely given
 

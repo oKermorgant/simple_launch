@@ -9,8 +9,11 @@ def generate_launch_description():
 
     # small wrapper around a node execution
     # this node will wait for some delay before exit
+    # executable is in share folder so we find it first
+    waiting_exec = sl.find('simple_launch', 'example_waiting.py')
+
     def waiting_node(name, delay, what = ''):
-        return sl.node('simple_launch', 'example_waiting.py', name = name,
+        return sl.node(executable=waiting_exec, name = name,
                        parameters = {'delay': float(delay) if isinstance(delay, int) else delay,
                                      'what': what})
 
