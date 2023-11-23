@@ -76,11 +76,11 @@ The `sl.include`, `sl.node` and `xacro_args` calls allow using any type (the sim
 
 `simple_launch` allows declaring launch arguments and getting them in return.
 
-Methods listed below return instances of `SimpleSubstitution` that represents any Substitution, but that provides concatenation (`+`) and path concatenation (`/`) operators. It is still a `Substitution`, not a raw Python type. If run from an `OpaqueFunction` the underlying Python variable is returned.
-
 ### Declare a launch argument
 
 `sl.declare_arg(name, default_value, description = None)`: declare and returns the argument
+
+Contrary to the base API, the default value is a raw Python type.
 
 ### Retrieve a launch argument
 
@@ -208,7 +208,7 @@ To do this with `simple_launch`:
 
 Compare [`example_launch.py`](example/example_launch.py) and [`example_opaque_launch.py`](example/example_opaque_launch.py) to see the two approaches on the same logic.
 
-Note that inside an `OpaqueFunction` the if/unless idom reduces to a basic if/else:
+Note that inside an `OpaqueFunction` the if/unless idiom reduces to a basic if/else:
 
 ```
 # with substitutions
@@ -224,11 +224,13 @@ else:
   # do other stuff
 ```
 
-## Other shortcuts
+## Other one-liners
+
+Methods listed below return instances of `SimpleSubstitution` that represent any Substitution, but that provides concatenation (`+`) and path concatenation (`/`) operators. It is still a `Substitution`, not a raw Python type. If run from an `OpaqueFunction` the underlying Python variable is returned.
 
 ### String / substitution concatenation
 
-The following syntax builds the `SimpleSubstitution` corresponding to `<robot name>.xacro`:
+The following syntax builds the `SimpleSubstitution` corresponding to `<robot arg>.xacro`:
 
 `file_name = sl.arg('robot') + '.xacro'`
 
@@ -236,7 +238,7 @@ The following syntax builds the `SimpleSubstitution` corresponding to `<robot na
 
 ### Path concatenation
 
-The following syntax builds the `SimpleSubstitution` corresponding to `<package_path>/urdf/<robot name>.xacro`:
+The following syntax builds the `SimpleSubstitution` corresponding to `<package_path>/urdf/<robot arg>.xacro`:
 
 ```
 file_name = sl.arg('robot') + '.xacro'
@@ -260,6 +262,8 @@ If `file_dir` is `None` but `package` and `file_name` are raw strings then the `
 If `file_name` is `None` then the function just returns the path to the package share directory (e.g. `get_package_share_directory(package)`)
 
 ### Robot state publisher
+
+It is quite common to run a `robot_state_publisher` from a `urdf` or `xacro` file. The line below runs it at the current namespace / condition level:
 
 `sl.robot_state_publisher(package, description_file, description_dir=None, xacro_args=None, prefix_gz_plugins=False, **node_args)` where
 
@@ -293,7 +297,7 @@ Note that `IfCondition` and `UnlessCondition` cannot be combined, [only the unde
 
 ### Joint state publisher
 
-`sl.joint_state_publisher(use_gui, **node_args)`: fires up a `joint_state_publisher`, with or without the gui.
+`sl.joint_state_publisher(use_gui, **node_args)`: fires up a `joint_state_publisher`, with or without the gui, in the current namespace.
 
 ### Rviz
 
@@ -371,7 +375,7 @@ An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>,
 The Gazebo message type is [deduced from the ROS message type](https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge). Remapping will be set to the given `ros_topic`.
 
 The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
-If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used. The corresponding `camera_info` topic will be automatically bridged.
+If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used. The corresponding `camera_info` topic will be also bridged.
 
 A common instance of the bridge is the clock. This one can be:
 
