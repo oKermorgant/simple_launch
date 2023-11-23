@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.9.0 (2023-11-23)
+------------------
 * update documentation
 * warnings/errors on misuse of GazeboBridge
 * move example executable to share directory
