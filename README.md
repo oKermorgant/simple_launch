@@ -33,17 +33,17 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 - `package` is the package of the included launch file
 - `launch_file` is the name of the launch file
 - `launch_dir` is its directory inside the package share (`None` to have it found)
-- `launch_arguments` is a list of arguments to pass to the included launch file
+- `launch_arguments` is a dictionary of arguments to pass to the included launch file
 
 ### Call a service at launch
 
 This line runs a temporary client that waits for a service and calls it when available:
 
-`sl.call_service(server, request = None, verbose = False)` where
+`sl.call_service(server, request = None, verbosity = '')` where
 
 - `server` is the path to some service (possibly namespaced). The service type is deduced when it becomes available.
 - `request` is a dictionary representing the service request. If `None` or incomplete, will use the service request default values.
-- `verbose` let the underlying node describe what it is doing
+- `verbosity` let the underlying node describe what it is doing: `'req'` for request info, `'res'` for response info or both with `'reqres'`
 
 If any request parameter is `__ns` it will be changed to the current namespace.
 
@@ -52,11 +52,11 @@ If any request parameter is `__ns` it will be changed to the current namespace.
 
 This line runs a temporary client that waits for a node and changes its parameters when available:
 
-`sl.set_parameters(node_name, parameters: dict = {}, verbose = False)` where
+`sl.set_parameters(node_name, parameters: dict = {}, verbosity = '')` where
 
 - `node_name` is the name of the node (possibly namespaced)
 - `parameters` is a dictionary of (name, value) parameters to be set
-- `verbose` let the underlying node describe what it is doing
+- `verbosity` let the underlying node describe what it is doing: `'req'` for request info, `'res'` for response info or both with `'reqres'`
 
 This calls the `set_parameters` service of the node with the passed types. Possible errors may happen if the parameters do not exist or are of a different type.
 
