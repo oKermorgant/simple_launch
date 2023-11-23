@@ -408,8 +408,10 @@ class SimpleLauncher:
         Sets the requested parameters for this node
         verbosity is none or 'req', 'res' or 'reqres' to get information on service call
         '''
+        params = {'simple_launch.node': node_name, 'simple_launch.keys': list(parameters.keys()), 'simple_launch.verbosity': verbosity}
+        params.update(parameters)
         return self.node('simple_launch', 'set_parameters',
-                  parameters = parameters | {'simple_launch.node': node_name, 'simple_launch.keys': list(parameters.keys()), 'simple_launch.verbosity': verbosity},
+                  parameters = params,
                   **kwargs)
 
     def rviz(self, config_file = None, warnings = False):
