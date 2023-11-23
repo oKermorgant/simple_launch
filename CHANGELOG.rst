@@ -2,6 +2,16 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* update documentation
+* warnings/errors on misuse of GazeboBridge
+* move example executable to share directory
+* dict cannot be updated with | in Foxy, fallback to dict.update
+* absolute container name when loading in existing container
+* py_eval can now handle conditions
+* Contributors: Olivier Kermorgant
+
 1.8.0 (2023-11-20)
 ------------------
 * sync documentation and examples
