@@ -32,7 +32,7 @@ class GazeboBridge:
     models = None
     world_name = None
 
-    gz_exec = 'gz'
+    gz_exec = 'ign'
 
     # ros <-> gz mapping
     # from https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge
@@ -123,6 +123,7 @@ class GazeboBridge:
             return
 
         # GZ / IGN get world: look for a clue in compilation flag, otherwise try both
+        # up to Iron / Rolling, Fortress is still the packaged one
         from os import environ
         for key in ('GZ_VERSION', 'IGNITION_VERSION'):
             if key in environ:
@@ -138,7 +139,7 @@ class GazeboBridge:
                 GazeboBridge.world_name = line.replace(']','[').split('[')[1]
                 break
         else:
-            console.warn('GazeboBridge: could not find any Gazebo instance, launch will probably fail')
+            console.warn(f'GazeboBridge: could not find any Gazebo instance (assuming {GazeboBridge.gz_exec}), launch will probably fail. If you use another version, specify GZ_VERSION to have it detected.')
             return
 
         GazeboBridge.models = [line.strip('- ') for line in models if line.startswith('- ')]
