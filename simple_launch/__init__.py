@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from .simple_substitution import SimpleSubstitution, flatten
 from .group import Group
 from . import console
-from .gazebo import only_show_args, silent_exec, GazeboBridge
+from .gazebo import only_show_args, silent_exec, GazeboBridge, ros_gz_prefix
 from typing import Text, List
 
 NODE_REMAPS = LAUNCH_ARGS = 1
@@ -98,7 +98,7 @@ class SimpleLauncher:
         '''
         if force is None:
             self.sim_time = False
-            clock_info = silent_exec('ros2 topic info /clock')
+            clock_info = silent_exec('ros2 topic info /clock').splitlines()
             for line in clock_info:
                 if line.startswith('Publisher count'):
                     self.sim_time = int(line.split()[-1]) > 0
@@ -522,10 +522,6 @@ class SimpleLauncher:
         args = flatten([['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes])
         return [stringify(arg) for arg in args]
 
-    @staticmethod
-    def gz_prefix():
-        return 'ign' if SimpleLauncher.ros_version() < 'humble' else 'gz'
-
     def create_gz_bridge(self, bridges: List[GazeboBridge], name = 'gz_bridge'):
         '''
         Create a ros_gz_bridge::parameter_bridge with the passed GazeboBridge instances
@@ -537,7 +533,7 @@ class SimpleLauncher:
         if len(bridges) == 0:
             return
 
-        ros_gz = 'ros_' + self.gz_prefix()
+        ros_gz = 'ros_' + ros_gz_prefix()
 
         # add camera_info for image bridges
         im_bridges = [bridge for bridge in bridges if bridge.is_image]
@@ -592,7 +588,7 @@ class SimpleLauncher:
         default version is Fortress (6), will use GZ_VERSION if present
         '''
 
-        if self.gz_prefix() == 'gz':
+        if ros_gz_prefix() == 'gz':
             launch_file = self.find('ros_gz_sim', 'gz_sim.launch.py')
             launch_arguments = {'gz_args': gz_args}
         else:
@@ -616,7 +612,7 @@ class SimpleLauncher:
             spawn_args += ['-world', GazeboBridge.world()]
 
         # spawn if not already there
-        pkg = 'ros_ign_gazebo' if self.ros_version() < 'humble' else 'ros_gz_sim'
+        pkg = 'ros_ign_gazebo' if ros_gz_prefix() == 'ign' else 'ros_gz_sim'
         node = Node(package = pkg, executable = 'create', arguments=spawn_args)
 
         if only_new:

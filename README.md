@@ -314,7 +314,7 @@ If any unavailable functionality is needed, the `sl.add_action(action)` function
 
 *Note: Ignition being renamed to Gazebo, all tools in this section use Gazebo / gz names*
 
-An effort was made to be robust to Ignition versus Gazebo uses, i.e. *ign* prefix is used for `foxy` and `galactic` while *gz* prefix is used from `humble`.
+An effort was made to be robust to Ignition versus Gazebo uses, i.e. *ign* prefix is used for `foxy` and `galactic` while *gz* prefix is used from `humble`. `GZ_VERSION` and `IGNITION_VERSION` environment variables are also used to identify which version should be preferred.
 
 ### Launch Gazebo
 
@@ -352,16 +352,6 @@ sl.robot_description(...)
 sl.spawn_gz_model(name, spawn_args = sl.gazebo_axes_args())
 ```
 
-### Gazebo sim
-
-The `GazeboBridge` class has a few static methods to interact with a **running Gazebo**. Namely:
-
-- `GazeboBridge.world()` returns the current world name
-- `GazeboBridge.model_prefix(model)` builds the Gazebo topic relative to the given model `/world/<world>/model/<model>`
-- `GazeboBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Gazebo already
-
-These methods request information on Gazebo at launch time. If no instance is found, the launch file will probably fail.
-
 ### Gazebo bridge
 
 The `GazeboBridge` class allows easily creating bridges when using Gazebo. Gazebo has to be already running in order to get information on the simulation scene.
@@ -381,6 +371,16 @@ A common instance of the bridge is the clock. This one can be:
 
 - created with `GazeboBridge.clock()`: returns a `GazeboBridge` instance, not added to any node yet
 - or run directly with `sl.create_gz_clock_bridge()` (actually runs `sl.create_gz_bridge([GazeboBridge.clock()])`)
+
+### Interaction with Gazebo sim
+
+The `GazeboBridge` class has a few static methods to interact with a **running Gazebo**. Namely:
+
+- `GazeboBridge.world()` returns the current world name
+- `GazeboBridge.model_prefix(model)` builds the Gazebo topic relative to the given model `/world/<world>/model/<model>`
+- `GazeboBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Gazebo already
+
+These methods request information on Gazebo at launch time. If no instance is found, the launch file will fail.
 
 ## Examples
 
