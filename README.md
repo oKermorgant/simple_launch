@@ -366,13 +366,13 @@ These methods request information on Gazebo at launch time. If no instance is fo
 
 The `GazeboBridge` class allows easily creating bridges when using Gazebo. Gazebo has to be already running in order to get information on the simulation scene.
 
-An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>, <ros_message>, direction)` where `direction` is either:
+An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>, <ros_message>, direction, <gz_message> = None)` where `direction` is either:
 
 - `GazeboBridge.gz2ros` for Gazebo -> ROS
 - `GazeboBridge.ros2gz` for ROS -> Gazebo
 - `GazeboBridge.bidirectional` for both
 
-The Gazebo message type is [deduced from the ROS message type](https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge). Remapping will be set to the given `ros_topic`.
+The Gazebo message type is [deduced from the ROS message type](https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge) if not set. Remapping will be set to the given `ros_topic`.
 
 The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
 If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used. The corresponding `camera_info` topic will be also bridged.

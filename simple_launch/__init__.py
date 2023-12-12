@@ -60,7 +60,6 @@ def adapt_type(params, target):
 
     return params
 
-
 class SimpleLauncher:
 
     def __init__(self, namespace = None, use_sim_time = None):
@@ -182,7 +181,7 @@ class SimpleLauncher:
         return generate_launch_description
 
     def __has_context(self) -> bool:
-        return self.__context is not None
+        return self.__context is not None   
 
     def __try_perform(self, substitution):
         '''

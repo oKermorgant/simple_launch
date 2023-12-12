@@ -1,5 +1,6 @@
 # OK general gitignore
 
+.*
 # Compiled source #
 ###################
 *.com
