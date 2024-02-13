@@ -60,6 +60,7 @@ def adapt_type(params, target):
 
     return params
 
+
 class SimpleLauncher:
 
     def __init__(self, namespace = None, use_sim_time = None):
@@ -80,23 +81,15 @@ class SimpleLauncher:
 
         # deal with use_sim_time
         if isinstance(use_sim_time, bool):
-            self.declare_arg('use_sim_time', use_sim_time,
+            self.sim_time = self.declare_arg('use_sim_time', use_sim_time,
                              description = 'Force use_sim_time parameter of instanciated nodes')
-            self.auto_sim_time(self.arg('use_sim_time'))
         elif use_sim_time != 'auto':
             console.warn("`use_sim_time` should be None, a Boolean, or 'auto' to rely on the /clock topic, ignoring")
         elif only_show_args():
             console.warn("This launch file will forward use_sim_time to all nodes if /clock is advertized at the time of the launch")
             return
         else:
-            self.auto_sim_time()
-
-    def auto_sim_time(self, force = None):
-        '''
-        Forces use_sim_time for all nodes.
-        If force is None then checks if /clock is being published and sets use_sim_time if this is the case
-        '''
-        if force is None:
+            # detect if any /clock topic is advertized
             self.sim_time = False
             clock_info = silent_exec('ros2 topic info /clock').splitlines()
             for line in clock_info:
@@ -107,8 +100,6 @@ class SimpleLauncher:
                 console.info("SimpleLauncher(use_sim_time='auto'): found a /clock topic, forwarding use_sim_time:=True to all nodes")
             else:
                 console.info("SimpleLauncher(use_sim_time='auto'): no /clock topic found, forwarding use_sim_time:=False to all nodes")
-        else:
-            self.sim_time = force
 
     def declare_arg(self, name, default_value = None, **kwargs):
         '''
@@ -330,7 +321,7 @@ class SimpleLauncher:
 
     def node(self, package = None, executable = None, plugin = None, **node_args):
         '''
-        Add a node to the launch tree. If auto_sim_time was used then the use_sim_time parameter will be set if not explicitely given
+        Add a node to the launch tree. If use_sim_time was used then the use_sim_time parameter will be set if not explicitely given
 
         * package -- name of the package
         * executable (classical node) -- name of the node within the package, if None then assumes the node has the name of the package
@@ -440,8 +431,7 @@ class SimpleLauncher:
             cmd += adapt_type(xacro_args, XACRO_ARGS)
         return SimpleSubstitution("'", Command(cmd,on_stderr='warn'), "'")
 
-    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False,
-                              namespaced_tf = False, **node_args):
+    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False, namespaced_tf = False, **node_args):
         '''
         Add a robot state publisher node to the launch tree using the given description (urdf / xacro) file.
 
