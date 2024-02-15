@@ -529,16 +529,17 @@ class SimpleLauncher:
         im_bridges = [bridge for bridge in bridges if bridge.is_image]
 
         for bridge in im_bridges:
+
             gz_head, gz_tail = bridge.gz_topic.split_tail()
             ros_head, ros_tail = bridge.ros_topic.split_tail()
 
-            if not all(isinstance(tail, Text) and '/image' in tail for tail in (ros_tail, gz_tail)):
+            if not all(isinstance(tail, Text) and 'image' in tail for tail in (ros_tail, gz_tail)):
                 continue
 
             cam = []
             for tail in (gz_tail, ros_tail):
-                idx = tail.rfind('/image')
-                cam.append(tail[:idx] + '/camera_info')
+                idx = tail.rfind('image')
+                cam.append(tail[:idx] + 'camera_info')
 
             bridges.append(GazeboBridge(gz_head + [cam[0]], ros_head + [cam[1]], 'sensor_msgs/CameraInfo', GazeboBridge.gz2ros))
 
