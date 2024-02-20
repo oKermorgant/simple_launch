@@ -2,6 +2,16 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* simplify + debug logic of SimpleSubstitution divisions
+* image instead of /image to be detected as an image topic
+* remove auto_sim_time function
+* more robust to various combinations of ROS and Gazebo
+* default Gazebo is still ignition Fortress, better error message about GZ_VERSION
+* add new bridges for Gazebo
+* Contributors: Olivier Kermorgant
+
 1.9.0 (2023-11-23)
 ------------------
 * update documentation
