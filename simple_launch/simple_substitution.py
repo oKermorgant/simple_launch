@@ -19,8 +19,10 @@ def is_basic(elem) -> bool:
     return isinstance(elem, (Text, bool, int, float))
 
 
-def is_none(elem) -> bool:
-    return elem is None or (isinstance(elem, SimpleSubstitution) and elem.__subs and all([sub is None for sub in elem.__subs]))
+def is_empty(elem) -> bool:
+    if isinstance(elem, SimpleSubstitution):
+        return all([is_empty(sub) for sub in elem.substitutions()])
+    return elem is None or elem == ''
 
 
 class SimpleSubstitution(Substitution):
@@ -30,10 +32,10 @@ class SimpleSubstitution(Substitution):
 
     def __init__(self, *elems):
         super().__init__()
-        self.__subs = list(elems)
+        self._subs = list(elems)
 
     def has_elems(self) -> bool:
-        return len(self.__subs) > 0
+        return len(self._subs) > 0
 
     def split_tail(self) -> tuple:
         if not self.has_elems():
@@ -45,7 +47,7 @@ class SimpleSubstitution(Substitution):
         return subs[:-1], subs[-1]
 
     def substitutions(self) -> List:
-        return flatten(self.__subs)
+        return flatten(self._subs)
 
     def describe(self) -> Text:
         return '{}'.format(' + '.join(str(sub) if is_basic(sub) else sub.describe() for sub in self.substitutions()))
@@ -54,25 +56,23 @@ class SimpleSubstitution(Substitution):
         return ''.join(str(sub) if is_basic(sub) else sub.perform(context) for sub in self.substitutions())
 
     def __add__(self, other) -> 'SimpleSubstitution':
-        return SimpleSubstitution([self.__subs, other])
+        return SimpleSubstitution(self._subs, other)
 
     def __iadd__(self, other) -> 'SimpleSubstitution':
-        self = self + other
+        self._subs.append(other)
         return self
 
     def __radd__(self, other) -> 'SimpleSubstitution':
-        return SimpleSubstitution([other, self.__subs])
+        return SimpleSubstitution(other, self._subs)
 
     def __truediv__(self, other) -> 'SimpleSubstitution':
-        if is_none(other):
-            return self
-        return SimpleSubstitution([self.__subs, sep, other])
+        this_sep = None if is_empty(other) or is_empty(self) else sep
+        return SimpleSubstitution(self._subs, this_sep, other)
 
     def __rtruediv__(self, other) -> 'SimpleSubstitution':
-        if is_none(other):
-            return self
-        return SimpleSubstitution([other, sep, self.__subs])
+        this_sep = None if is_empty(other) or is_empty(self) else sep
+        return SimpleSubstitution(other, this_sep, self._subs)
 
     def __itruediv__(self, other) -> 'SimpleSubstitution':
-        self = self / other
+        self._subs = (self / other)._subs
         return self

@@ -340,6 +340,9 @@ class SimpleLauncher:
             if key in node_args:
                 node_args[key] = adapt_type(node_args[key], target)
 
+        if 'arguments' in node_args and isinstance(node_args['arguments'], str):
+            node_args['arguments'] = node_args['arguments'].split()
+
         if self.sim_time is not None:
             if 'parameters' in node_args:
                 if type(node_args['parameters'][0]) == dict and 'use_sim_time' not in node_args['parameters'][0]:
