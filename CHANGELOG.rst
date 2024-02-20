@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.9.1 (2024-02-20)
+------------------
 * simplify + debug logic of SimpleSubstitution divisions
 * image instead of /image to be detected as an image topic
 * remove auto_sim_time function
