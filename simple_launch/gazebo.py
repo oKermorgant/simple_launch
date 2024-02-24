@@ -27,6 +27,11 @@ def silent_exec(cmd):
 
 def ros_gz_prefix():
     from os import environ
+
+    for env in ('IGN_VERSION', 'GZ_VERSION'):
+        if env in environ:
+            return 'ign' if environ[env] == 'fortress' else 'gz'
+
     return 'ign' if environ['ROS_DISTRO'] < 'humble' else 'gz'
 
 
