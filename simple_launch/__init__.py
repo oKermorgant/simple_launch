@@ -12,7 +12,7 @@ from .simple_substitution import SimpleSubstitution, flatten
 from .group import Group
 from . import console
 from .gazebo import only_show_args, silent_exec, GazeboBridge, ros_gz_prefix
-from typing import Text, List
+from typing import Text, List, Iterable
 
 NODE_REMAPS = LAUNCH_ARGS = 1
 NODE_PARAMS = 2
@@ -108,9 +108,22 @@ class SimpleLauncher:
         if self.__has_context():
             console.error(f'declaring a launch argument "{name}" while inside an opaque function\nyou should declare the arguments before the function')
 
+        if isinstance(default_value, List):
+            default_value = list(map(str, default_value))
+        else:
+            default_value = str(default_value)
+
+        if 'choices' in kwargs:
+            kwargs['choices'] = list(kwargs['choices'])
+            for i,item in enumerate(kwargs['choices']):
+                if isinstance(item, Iterable):
+                    kwargs['choices'][i] = list(map(str, item))
+                else:
+                    kwargs['choices'][i] = str(item)
+
         self.__groups[0].add_action(DeclareLaunchArgument(
             name,
-            default_value=str(default_value),
+            default_value=default_value,
             **kwargs))
 
         return self.arg(name)
@@ -123,13 +136,11 @@ class SimpleLauncher:
         from os import environ
         return environ['ROS_DISTRO']
 
-    def arg(self, name):
+    def arg(self, name: str):
         '''
-        Retrieve an argument
+        Retrieve an argument, should be a string otherwise -s will crash
         '''
-        if type(name) != str:
-            return self.__try_perform(name)
-        return self.__try_perform(SimpleSubstitution(LaunchConfiguration(name)))
+        return self.__try_perform(LaunchConfiguration(self.__try_perform(name)))
 
     def arg_map(self, *names):
         '''
@@ -166,13 +177,12 @@ class SimpleLauncher:
                 self.__context = context
                 return opaque_function()
 
-            return LaunchDescription(self.__cur_group.close()
-                                     + [OpaqueFunction(function = wrapped_opaque_function)])
+            return LaunchDescription(self.__cur_group.close() + [OpaqueFunction(function = wrapped_opaque_function)])
 
         return generate_launch_description
 
     def __has_context(self) -> bool:
-        return self.__context is not None   
+        return self.__context is not None
 
     def __try_perform(self, substitution):
         '''
