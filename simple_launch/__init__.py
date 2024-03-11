@@ -108,18 +108,18 @@ class SimpleLauncher:
         if self.__has_context():
             console.error(f'declaring a launch argument "{name}" while inside an opaque function\nyou should declare the arguments before the function')
 
-        if isinstance(default_value, List):
-            default_value = list(map(str, default_value))
-        else:
-            default_value = str(default_value)
+        def to_string_nested(elem):
+            if not isinstance(elem, Iterable):
+                return str(elem)
+            elem = list(elem)
+            for i,item in enumerate(elem):
+                elem[i] = to_string_nested(item)
+            return elem
+
+        default_value = to_string_nested(default_value)
 
         if 'choices' in kwargs:
-            kwargs['choices'] = list(kwargs['choices'])
-            for i,item in enumerate(kwargs['choices']):
-                if isinstance(item, Iterable):
-                    kwargs['choices'][i] = list(map(str, item))
-                else:
-                    kwargs['choices'][i] = str(item)
+            kwargs['choices'] = to_string_nested(kwargs['choices'])
 
         self.__groups[0].add_action(DeclareLaunchArgument(
             name,
