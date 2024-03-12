@@ -12,7 +12,7 @@ from .simple_substitution import SimpleSubstitution, flatten
 from .group import Group
 from . import console
 from .gazebo import only_show_args, silent_exec, GazeboBridge, ros_gz_prefix
-from typing import Text, List, Iterable
+from typing import Text, List, Tuple
 
 NODE_REMAPS = LAUNCH_ARGS = 1
 NODE_PARAMS = 2
@@ -109,7 +109,7 @@ class SimpleLauncher:
             console.error(f'declaring a launch argument "{name}" while inside an opaque function\nyou should declare the arguments before the function')
 
         def to_string_nested(elem):
-            if not isinstance(elem, Iterable):
+            if not isinstance(elem, (List, Tuple)):
                 return str(elem)
             elem = list(elem)
             for i,item in enumerate(elem):
