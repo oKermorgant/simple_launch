@@ -171,10 +171,21 @@ class GazeboBridge:
                 break
 
         if GazeboBridge.world_name is None:
-            console.error(f'GazeboBridge: could not find any Gazebo instance (tried {" and ".join(candidates)}), run Gazebo before this launch file.')
+            console.error(f'GazeboBridge: could not find any Gazebo instance (tried {" and ".join(candidates)}), run Gazebo before this launch file.\n                 Read https://github.com/oKermorgant/simple_launch?tab=readme-ov-file#interaction-with-gazebo-sim for more information')
             return
 
         console.info('GazeboBridge: connected to a running Gazebo instance')
+
+    @staticmethod
+    def set_world_name(name: str):
+        '''
+        Overwrite world name and model list in order to avoid communicating with Gazebo
+        Useful when Gazebo is launched in an included file, where the world name cannot be guessed
+        '''
+        if name is None:
+            return
+        GazeboBridge.models = []
+        GazeboBridge.world_name = name
 
     @staticmethod
     def use_prefix(prefix):

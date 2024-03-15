@@ -586,20 +586,34 @@ class SimpleLauncher:
         '''
         self.create_gz_bridge(GazeboBridge.clock(), name)
 
-    def gz_launch(self, gz_args = None):
+    def gz_launch(self, world_file = None, gz_args = None):
         '''
         Wraps gz_sim_launch to be Ignition/GzSim agnostic
         default version is Fortress (6), will use GZ_VERSION if present
         '''
 
+        full_args = ' '.join(arg for arg in [world_file, gz_args] if arg is not None)
+
         if ros_gz_prefix() == 'gz':
             launch_file = self.find('ros_gz_sim', 'gz_sim.launch.py')
-            launch_arguments = {'gz_args': gz_args}
+            launch_arguments = {'gz_args': full_args}
         else:
             launch_file = self.find('ros_ign_gazebo', 'ign_gazebo.launch.py')
-            launch_arguments = {'ign_args': gz_args}
+            launch_arguments = {'ign_args': full_args}
 
-        self.include(launch_file = launch_file, launch_arguments = launch_arguments)
+        if exists(world_file):
+            line = silent_exec(f"grep 'world name' {world_file}")
+            # line =  <world name="some_world">\n'
+            world = line.split('"')[1]
+            if world:
+                console.info(f'Gazebo world "{world}" found @ {world_file}')
+                GazeboBridge.set_world_name(line.split('"')[1])
+            else:
+                console.warn(f'Could not get the name of Gazebo world {world_file}')
+        else:
+            console.warn(f'Could not retrieve the name of Gazebo world @ "{world_file}"')
+
+        return self.include(launch_file = launch_file, launch_arguments = launch_arguments)
 
     def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = [], only_new = True):
         '''

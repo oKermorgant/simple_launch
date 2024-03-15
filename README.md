@@ -320,10 +320,12 @@ An effort was made to be robust to Ignition versus Gazebo uses, i.e. *ign* prefi
 
 The Gazebo launch file corresponding to the current ROS 2 distribution is launched with
 ```
-sl.gz_launch(gz_arguments)
+sl.gz_launch(world_file, gz_arguments)
 ```
 Namely, it will redirect to either `ros_ign_gazebo/ign_gazebo.launch.py` (`foxy`, `galactic`) or `ros_gz_sim/gz_sim.launch.py` (`humble`+).
 The given `gz_arguments`, if any, will be forwarded either as the `ign_args` or `gz_args`, accordingly.
+
+If the world file can be parsed then `SimpleLaunch` will detect its name and forward it to `GazeboBridge` functions.
 
 ### Spawn a model
 
@@ -370,17 +372,26 @@ If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` brid
 A common instance of the bridge is the clock. This one can be:
 
 - created with `GazeboBridge.clock()`: returns a `GazeboBridge` instance, not added to any node yet
-- or run directly with `sl.create_gz_clock_bridge()` (actually runs `sl.create_gz_bridge([GazeboBridge.clock()])`)
+- or run directly with `sl.create_gz_clock_bridge()` (actually runs `sl.create_gz_bridge(GazeboBridge.clock())`)
 
 ### Interaction with Gazebo sim
 
-The `GazeboBridge` class has a few static methods to interact with a **running Gazebo**. Namely:
+Some bridges (e.g. `joint_states`) need to have information on the world name. This name can only be obtained while Gazebo is running, or by having a priori knowledge of the world file.
+
+The `GazeboBridge` class has a few static methods to get information on the simulated world, namely:
 
 - `GazeboBridge.world()` returns the current world name
 - `GazeboBridge.model_prefix(model)` builds the Gazebo topic relative to the given model `/world/<world>/model/<model>`
 - `GazeboBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Gazebo already
+- `GazeboBridge.set_world_name(world)` imposes the world name
 
-These methods request information on Gazebo at launch time. If no instance is found, the launch file will fail.
+They can be used under these conditions:
+
+- A **running Gazebo** instance exists, in this case `GazeboBridge` will request information on the world
+- Or `sl.gz_launch` was called first (in the same launch file) and the world file could be parsed, in this case the world name from the file is used
+- or `GazeboBridge.set_world_name(world)` was called first (in the same launch file), in this case this world name is used
+
+If none of these conditions hold, the launch file will not be able to get information on the world, and launch fill probably fail.
 
 ## Examples
 
@@ -511,7 +522,7 @@ generate_launch_description = sl.launch_description(opaque_function = launch_set
 
 ### Combining conditions
 
-The file below shows how to use `sl.py_eval` to combine conditions. We have to build a valid Python expression, not forgetting the spaces around `and`/`or`.
+The file below shows how to use `sl.py_eval` to combine conditions. We have to build a valid Python expression, not forgetting the spaces around `and`, `or`, `not`, etc.
 
 ```
 from simple_launch import SimpleLauncher
@@ -576,7 +587,7 @@ def generate_launch_description():
     sl = SimpleLauncher(use_sim_time=True)
 
     # run Gazebo + clock bridge
-    sl.gz_launch(f'-r {<path/to/some/sdf/world>}')
+    sl.gz_launch(<path/to/some/sdf/world>, '-r')
     sl.create_gz_clock_bridge()
 
     # run other nodes with sim time
