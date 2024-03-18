@@ -140,7 +140,7 @@ class SimpleLauncher:
         '''
         Retrieve an argument, should be a string otherwise -s will crash
         '''
-        return self.__try_perform(LaunchConfiguration(self.__try_perform(name)))
+        return self.__try_perform(SimpleSubstitution(LaunchConfiguration(self.__try_perform(name))))
 
     def arg_map(self, *names):
         '''
