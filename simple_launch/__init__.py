@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from .simple_substitution import SimpleSubstitution, flatten
 from .group import Group
 from . import console
-from .gazebo import only_show_args, silent_exec, GazeboBridge, ros_gz_prefix
+from .gazebo import only_show_args, silent_exec, GazeboBridge, ros_gz_prefix, gz_launch_setup
 from typing import Text, List, Tuple
 
 NODE_REMAPS = LAUNCH_ARGS = 1
@@ -140,7 +140,7 @@ class SimpleLauncher:
         '''
         Retrieve an argument, should be a string otherwise -s will crash
         '''
-        return self.__try_perform(LaunchConfiguration(self.__try_perform(name)))
+        return self.__try_perform(SimpleSubstitution(LaunchConfiguration(self.__try_perform(name))))
 
     def arg_map(self, *names):
         '''
@@ -263,8 +263,6 @@ class SimpleLauncher:
          - a raw if / unless condition that may come out of an expression
          - an event condition (from simple_launch import OnExit, OnStart
         '''
-        condition = None
-
         if self.__cur_group.is_container():
             console.error(f'Container "{self.__cur_group.is_container()}": Group blocks cannot be nested inside container blocks. Use OpaqueFunction or reverse the logic.')
 
@@ -273,7 +271,8 @@ class SimpleLauncher:
         if len(conditions) - conditions.count(None) > 1:
             console.error(f'group blocks cannot have more than 1 condition (has {len(conditions) - conditions.count(None)}')
 
-        # get condition, cast as
+        # get condition and cast it
+        condition = None
         if if_arg is not None:
             condition = IfCondition(LaunchConfiguration(if_arg))
         elif unless_arg is not None:
@@ -324,7 +323,7 @@ class SimpleLauncher:
 
     def add_action(self, action):
         '''
-        Adds a user-created Action (Node, ComposableNodes, Group, etc.) at the current group level
+        Adds an Action (Node, ComposableNodes, Group, etc.) at the current group level
         '''
         self.__cur_group.add_action(action)
         return action
@@ -444,7 +443,9 @@ class SimpleLauncher:
             cmd += adapt_type(xacro_args, XACRO_ARGS)
         return SimpleSubstitution("'", Command(cmd,on_stderr='warn'), "'")
 
-    def robot_state_publisher(self, package=None, description_file=None, description_dir=None, xacro_args=None, prefix_gz_plugins=False, namespaced_tf = False, **node_args):
+    def robot_state_publisher(self, package=None, description_file=None, description_dir=None,
+                              xacro_args=None, prefix_gz_plugins=False,
+                              namespaced_tf = False, **node_args):
         '''
         Add a robot state publisher node to the launch tree using the given description (urdf / xacro) file.
 
@@ -591,31 +592,10 @@ class SimpleLauncher:
         Wraps gz_sim_launch to be Ignition/GzSim agnostic
         default version is Fortress (6), will use GZ_VERSION if present
         '''
-
-        full_args = ' '.join(arg for arg in [world_file, gz_args] if arg is not None)
-
-        if ros_gz_prefix() == 'gz':
-            launch_file = self.find('ros_gz_sim', 'gz_sim.launch.py')
-            launch_arguments = {'gz_args': full_args}
-        else:
-            launch_file = self.find('ros_ign_gazebo', 'ign_gazebo.launch.py')
-            launch_arguments = {'ign_args': full_args}
-
-        if exists(world_file):
-            line = silent_exec(f"grep 'world name' {world_file}")
-            # line =  <world name="some_world">\n'
-            world = line.split('"')[1]
-            if world:
-                console.info(f'Gazebo world "{world}" found @ {world_file}')
-                GazeboBridge.set_world_name(line.split('"')[1])
-            else:
-                console.warn(f'Could not get the name of Gazebo world {world_file}')
-        else:
-            console.warn(f'Could not retrieve the name of Gazebo world @ "{world_file}"')
-
+        launch_file, launch_arguments = gz_launch_setup(world_file, gz_args)
         return self.include(launch_file = launch_file, launch_arguments = launch_arguments)
 
-    def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = [], only_new = True):
+    def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = []):
         '''
         Spawns a model into Gazebo under the given name, from the given topic or file
         Additional spawn_args can be given to specify e.g. the initial pose
@@ -626,22 +606,8 @@ class SimpleLauncher:
         else:
             spawn_args = flatten(spawn_args + ['-topic',topic,'-name', name])
 
-        if '-world' not in spawn_args:
-            spawn_args += ['-world', GazeboBridge.world()]
-
-        # spawn if not already there
         pkg = 'ros_ign_gazebo' if ros_gz_prefix() == 'ign' else 'ros_gz_sim'
-        node = Node(package = pkg, executable = 'create', arguments=spawn_args)
-
-        if only_new:
-            if self.__has_context():
-                if not GazeboBridge.has_model(name):
-                    self.add_action(node)
-            else:
-                with self.group(unless_condition = GazeboBridge.has_model(name)):
-                    self.add_action(node)
-        else:
-            self.add_action(node)
+        self.node(package = pkg, executable = 'create', arguments=spawn_args)
 
     # deprecated section
 

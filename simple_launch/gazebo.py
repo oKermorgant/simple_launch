@@ -1,4 +1,6 @@
 from .simple_substitution import SimpleSubstitution
+from ament_index_python.packages import get_package_share_directory
+from os.path import join, exists
 from . import console
 
 
@@ -25,6 +27,50 @@ def silent_exec(cmd):
         return ''
 
 
+gz_launched_worlds = []
+
+
+def gz_launch_setup(world_file = None, gz_args = None):
+    full_args = ' '.join(arg for arg in [world_file, gz_args] if arg is not None)
+
+    if ros_gz_prefix() == 'gz':
+        launch_file = join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')
+        launch_arguments = {'gz_args': full_args}
+    else:
+        launch_file = join(get_package_share_directory('ros_ign_gazebo'), 'launch', 'ign_gazebo.launch.py')
+        launch_arguments = {'ign_args': full_args}
+
+    # adapt to previous syntax to retrieve world file if not explicit
+    if exists(world_file):
+        valid_file = world_file
+    else:
+        valid_file = [arg for arg in full_args.split() if exists(arg)]
+        valid_file = valid_file[0] if valid_file else None
+
+    show_gz_info = not only_show_args()
+    console_msg = console.warn
+
+    if valid_file:
+        show_gz_info = show_gz_info and valid_file not in gz_launched_worlds
+        gz_launched_worlds.append(valid_file)
+        line = silent_exec(f"grep 'world name' {valid_file}")
+        # line =  <world name="some_world">\n'
+        world = line.split('"')[1]
+        if world:
+            msg = f'Gazebo world "{world}" found @ {valid_file}'
+            console_msg = console.info
+            GazeboBridge.set_world_name(line.split('"')[1])
+        else:
+            msg = f'Could not get the name of Gazebo world {valid_file}'
+    else:
+        msg = f'Could not read Gazebo world @ "{world_file}"'
+
+    if show_gz_info:
+        console_msg(msg)
+
+    return launch_file, launch_arguments
+
+
 def ros_gz_prefix():
     from os import environ
 
@@ -35,31 +81,12 @@ def ros_gz_prefix():
     return 'ign' if environ['ROS_DISTRO'] < 'humble' else 'gz'
 
 
-def _get_gz_world_info(gz_exec):
-    '''
-    Tries to get the world name and models, assuming some gz_exec (ign / gz)
-    '''
-    out = silent_exec([gz_exec, 'model', '--list'])
-
-    if 'timed out' in out:
-        return None, None
-
-    out = out.splitlines()
-    world_name = None
-    for line in out:
-        if line.startswith('Requesting'):
-            world_name = line.replace(']','[').split('[')[1]
-    return world_name, [line.strip('- ') for line in out if line.startswith('- ')]
-
-
 class GazeboBridge:
     gz2ros = '['
     ros2gz = ']'
     bidirectional = '@'
-    models = None
-    world_name = None
-
-    gz_exec = None
+    _world_name = None
+    _gz_exec = None
 
     # ros <-> gz mapping
     # from https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge
@@ -137,63 +164,6 @@ class GazeboBridge:
     'vision_msgs/msg/Detection2D': 'gz.msgs.AnnotatedAxisAligned2DBox',
     'vision_msgs/msg/Detection2DArray': 'gz.msgs.AnnotatedAxisAligned2DBox_V'}
 
-    @staticmethod
-    def read_models():
-
-        if GazeboBridge.models is not None:
-            return
-
-        if only_show_args():
-            # set a dummy world model, we are not running anyway
-            GazeboBridge.models = []
-            GazeboBridge.world_name = 'default'
-            console.warn('This launch file will request information on a running Gazebo instance at the time of the launch')
-            return
-
-        # GZ / IGN: look for a clue in compilation flag, otherwise try both
-        # up to Iron, Fortress is still the packaged one but probably not the used one
-        from os import environ
-        candidates = ['gz', 'ign']
-        if environ['ROS_DISTRO'] < 'humble':
-            candidates = ['ign','gz']
-        for key in ('GZ_VERSION', 'IGNITION_VERSION'):
-            if key in environ:
-                if environ[key] == 'fortress':
-                    candidates = ['ign']
-                else:
-                    candidates = ['gz']
-                break
-
-        # try to call Gazebo according to the exec candidates, that should be running at this point
-        for GazeboBridge.gz_exec in candidates:
-            GazeboBridge.world_name, GazeboBridge.models = _get_gz_world_info(GazeboBridge.gz_exec)
-            if GazeboBridge.world_name is not None:
-                break
-
-        if GazeboBridge.world_name is None:
-            console.error(f'GazeboBridge: could not find any Gazebo instance (tried {" and ".join(candidates)}), run Gazebo before this launch file.\n                 Read https://github.com/oKermorgant/simple_launch?tab=readme-ov-file#interaction-with-gazebo-sim for more information')
-            return
-
-        console.info('GazeboBridge: connected to a running Gazebo instance')
-
-    @staticmethod
-    def set_world_name(name: str):
-        '''
-        Overwrite world name and model list in order to avoid communicating with Gazebo
-        Useful when Gazebo is launched in an included file, where the world name cannot be guessed
-        '''
-        if name is None:
-            return
-        GazeboBridge.models = []
-        GazeboBridge.world_name = name
-
-    @staticmethod
-    def use_prefix(prefix):
-        '''
-        Tell GazeboBridge to use either ign or gz prefix (default)
-        '''
-        GazeboBridge.gz_exec = prefix
-
     def __init__(self, gz_topic, ros_topic, ros_msg, direction, gz_msg = None):
         '''
         Create a bridge instance to be passed to SimpleLauncher.create_gz_bridge
@@ -234,20 +204,20 @@ class GazeboBridge:
                                     # "ROS_TO_IGN" - Bridge ROS topic
         '''
 
-        if self.gz_exec is None:
-            self.gz_exec = ros_gz_prefix()
+        if self._gz_exec is None:
+            self._gz_exec = ros_gz_prefix()
 
         direction = 'BIDIRECTIONAL'
         if self.direction == self.gz2ros:
-            direction = f'{self.gz_exec.upper()}_TO_ROS'
+            direction = f'{self._gz_exec.upper()}_TO_ROS'
         elif self.direction == self.ros2gz:
-            direction = f'ROS_TO_{self.gz_exec.upper()}'
+            direction = f'ROS_TO_{self._gz_exec.upper()}'
 
-        if self.gz_exec == 'ign':
+        if self._gz_exec == 'ign':
             self.gz_msg = self.gz_msg.replace('gz.','ignition.')
 
-        return SimpleSubstitution(f'- {self.gz_exec}_topic_name: ', self.gz_topic, '\n',
-                                 f'  {self.gz_exec}_type_name: ', self.gz_msg, '\n',
+        return SimpleSubstitution(f'- {self._gz_exec}_topic_name: ', self.gz_topic, '\n',
+                                 f'  {self._gz_exec}_type_name: ', self.gz_msg, '\n',
                                  '  ros_topic_name: ',self.ros_topic, '\n',
                                  '  ros_type_name: ', self.ros_msg, '\n',
                                  '  direction: ', direction, '\n')
@@ -257,9 +227,53 @@ class GazeboBridge:
         return direction in (GazeboBridge.gz2ros, GazeboBridge.ros2gz, GazeboBridge.bidirectional)
 
     @staticmethod
+    def set_world_name(name: str):
+        '''
+        Overwrite world name in order to avoid communicating with Gazebo
+        Useful when Gazebo is launched in an included file, where the world name cannot be guessed
+        '''
+        GazeboBridge._world_name = name
+
+    @staticmethod
     def world():
-        GazeboBridge.read_models()
-        return GazeboBridge.world_name
+
+        if GazeboBridge._world_name is not None:
+            return GazeboBridge._world_name
+
+        if only_show_args():
+            # set a dummy world model, we are not running anyway
+            GazeboBridge._world_name = 'dummy'  # silent future calls
+            console.warn('This launch file will request information on a running Gazebo instance at the time of the launch')
+            return GazeboBridge._world_name
+
+        # GZ / IGN: look for a clue in compilation flag, otherwise try both
+        # up to Iron, Fortress is still the packaged one but probably not the used one
+        from os import environ
+        candidates = ['gz', 'ign']
+        if environ['ROS_DISTRO'] < 'humble':
+            candidates = ['ign','gz']
+        for key in ('GZ_VERSION', 'IGNITION_VERSION'):
+            if key in environ:
+                if environ[key] == 'fortress':
+                    candidates = ['ign']
+                else:
+                    candidates = ['gz']
+                break
+
+        # try to call Gazebo according to the exec candidates, that should be running at this point
+        for GazeboBridge._gz_exec in candidates:
+            out = silent_exec([GazeboBridge._gz_exec, 'model', '--list'])
+            if 'timed out' in out:
+                continue
+            GazeboBridge._world_name = out.replace(']','[').split('[')[1]
+            break
+
+        if GazeboBridge._world_name is None:
+            console.error(f'GazeboBridge: could not find any Gazebo instance (tried {" and ".join(candidates)}), run Gazebo before this launch file.\n                 Read https://github.com/oKermorgant/simple_launch?tab=readme-ov-file#interaction-with-gazebo-sim for more information')
+            return
+
+        console.info(f'GazeboBridge: found world "{GazeboBridge._world_name}"')
+        return GazeboBridge._world_name
 
     @staticmethod
     def model_prefix(model):
@@ -274,15 +288,3 @@ class GazeboBridge:
     @staticmethod
     def clock():
         return GazeboBridge('/clock', '/clock', 'rosgraph_msgs/msg/Clock', GazeboBridge.gz2ros)
-
-    @staticmethod
-    def has_model(model):
-        '''
-        Returns True (or equivalent substitution) if the model already exists in Gazebo
-        '''
-        GazeboBridge.read_models()
-        if isinstance(model, str):
-            return model in GazeboBridge.models
-        # come on, we are checking a substitution against a command line output
-        from launch.substitutions import PythonExpression
-        return PythonExpression(["'", model, "' in ", str(GazeboBridge.models)])

@@ -1,6 +1,5 @@
 
 def color(msg, color, newline = ''):
-
     return f'\033[{color}m{newline}[simple_launch]: {msg}\033[0m'
 
 

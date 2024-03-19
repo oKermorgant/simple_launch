@@ -347,16 +347,16 @@ Calling `sl.declare_gazebo_axes()` will declare all 6 parameters `(x,y,z,roll,pi
 If any axis is given (e.g. `sl.declare_gazebo_axes(yaw = 3.14)` then only this parameter will be declared.
 
 Such parameters can be retrieved through `sl.gazebo_axes_args()`. As a consequence, it is easy to spawn a model with:
+
 ```
 sl.declare_gazebo_axes()
-
 sl.robot_description(...)
 sl.spawn_gz_model(name, spawn_args = sl.gazebo_axes_args())
 ```
 
 ### Gazebo bridge
 
-The `GazeboBridge` class allows easily creating bridges when using Gazebo. Gazebo has to be already running in order to get information on the simulation scene.
+The `GazeboBridge` class allows easily creating bridges when using Gazebo.
 
 An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>, <ros_message>, direction, <gz_message> = None)` where `direction` is either:
 
@@ -381,15 +381,14 @@ Some bridges (e.g. `joint_states`) need to have information on the world name. T
 The `GazeboBridge` class has a few static methods to get information on the simulated world, namely:
 
 - `GazeboBridge.world()` returns the current world name
-- `GazeboBridge.model_prefix(model)` builds the Gazebo topic relative to the given model `/world/<world>/model/<model>`
-- `GazeboBridge.has_model(model)` returns `True` of `False` depending on the passed model existing in Gazebo already
 - `GazeboBridge.set_world_name(world)` imposes the world name
+- `GazeboBridge.model_prefix(model)` builds the Gazebo topic relative to the given model `/world/<world>/model/<model>`
 
 They can be used under these conditions:
 
-- A **running Gazebo** instance exists, in this case `GazeboBridge` will request information on the world
-- Or `sl.gz_launch` was called first (in the same launch file) and the world file could be parsed, in this case the world name from the file is used
+- `sl.gz_launch` was called first (in the same launch file) and the world file could be parsed, in this case the world name from the file is used
 - or `GazeboBridge.set_world_name(world)` was called first (in the same launch file), in this case this world name is used
+- if none of the above and a **running Gazebo** instance exists, in this case `GazeboBridge` will request information on the world
 
 If none of these conditions hold, the launch file will not be able to get information on the world, and launch fill probably fail.
 
@@ -620,7 +619,6 @@ def generate_launch_description():
             # only execute this group if use_sim_time was set to True
 
             # spawn in Gazebo at default pose if not already here
-            # uses GazeboBridge.has_model(robot) under the hood and calls ros_gz_sim::create
             sl.spawn_gz_model(robot)
 
             # create a bridge for joint states @ /world/<world>/model/<robot>/joint_state
@@ -641,6 +639,17 @@ def generate_launch_description():
     return sl.launch_description()
 
 ```
+
+### Full Gazebo simulation
+
+The file `example/gazebo/gazebo_launch.py` runs a basic simulation of a turret robot with a camera, also displayed in RViz.
+
+```
+ros2 launch simple_launch gazebo_launch.py
+```
+
+You can move the robot around with a joint velocity setpoint (`std_msgs/Float64`) on `/turret/joint#` and see the simulated camera on `/turret/image`.
+
 
 ## I want more examples
 
