@@ -21,7 +21,20 @@
         <color rgba=".0 1 0 1"/>
       </material>
 
+
+<xacro:macro name="inertia" params="">
+     <inertial>
+      <mass value="0.1" />
+      <inertia  izz="0.1" ixy="0.0"  ixz="0.0"
+                iyy="0.1" iyz="0.0"
+                ixx="0.1" />
+    </inertial>
+</xacro:macro>
+
+
 <link name="world"/>
+
+
 
 <joint name="base_link" type="fixed">
     <parent link="world" />
@@ -36,8 +49,9 @@
       <geometry>
         <cylinder length="0.5" radius="0.025"/>
       </geometry>
- <material name="matbase"/>
+    <material name="matbase"/>
     </visual>
+    <xacro:inertia/>
   </link>
 
 <link name="$(arg prefix)link1">
@@ -47,6 +61,7 @@
 </geometry>
  <material name="mat1"/>
     </visual>
+    <xacro:inertia/>
 </link>
 
 <link name="$(arg prefix)link2">
@@ -57,16 +72,18 @@
 </geometry>
  <material name="mat2"/>
     </visual>
+    <xacro:inertia/>
 </link>
 
 <link name="$(arg prefix)link2_2">
 <visual>
         <origin xyz="0 .03 0.0" rpy="1.57079632679 0 0" />
-<geometry>
+        <geometry>
         <cylinder length="0.06" radius="0.004"/>
 </geometry>
  <material name="mat2"/>
     </visual>
+    <xacro:inertia/>
 </link>
 
 <link name="$(arg prefix)link3">
@@ -77,6 +94,7 @@
 </geometry>
  <material name="mat3"/>
     </visual>
+    <xacro:inertia/>
 </link>
 
 <link name="$(arg prefix)tool0">
@@ -87,6 +105,7 @@
 </geometry>
         <material name="mat4"/>
     </visual>
+    <xacro:inertia/>
 </link>
 
 <!-- Joints -->
@@ -127,7 +146,50 @@
 	<joint name="link4_2" type="fixed">
     	<parent link="$(arg prefix)link3" />
     	<child link="$(arg prefix)tool0" />
-    	<origin xyz="0.0 0 0.1" rpy="0 0 0" />
+    	<origin xyz="0.0 0 0.1" rpy="${pi/2} ${pi/2} 0" />
 	</joint>
+
+
+     <gazebo>
+
+        <!-- Velocity control -->
+        <plugin filename="libignition-gazebo-joint-controller-system.so" name="ignition::gazebo::systems::JointController">
+            <joint_name>joint1</joint_name>
+            <topic>$(arg prefix)joint1_cmd_vel</topic>
+        </plugin>
+        <plugin filename="libignition-gazebo-joint-controller-system.so" name="ignition::gazebo::systems::JointController">
+            <joint_name>joint2</joint_name>
+            <topic>$(arg prefix)joint2_cmd_vel</topic>
+        </plugin>
+        <plugin filename="libignition-gazebo-joint-controller-system.so" name="ignition::gazebo::systems::JointController">
+            <joint_name>joint3</joint_name>
+            <topic>$(arg prefix)joint3_cmd_vel</topic>
+        </plugin>
+        <plugin filename="ignition-gazebo-joint-state-publisher-system" name="ignition::gazebo::systems::JointStatePublisher"/>
+    </gazebo>
+
+ <gazebo reference="$(arg prefix)tool0">
+  <sensor name="camera" type="camera">
+    <camera>
+    <optical_frame_id>$(arg prefix)tool0</optical_frame_id>
+    <horizontal_fov>1.047</horizontal_fov>
+    <image>
+        <width>640</width>
+        <height>400</height>
+    </image>
+    <clip>
+        <near>0.05</near>
+        <far>100</far>
+    </clip>
+    </camera>
+    <always_on>1</always_on>
+    <update_rate>30</update_rate>
+    <visualize>true</visualize>
+    <topic>$(arg prefix)image</topic>
+    <enable_metrics>false</enable_metrics>
+  </sensor>
+</gazebo>
+
+
 
 </robot>

@@ -13,7 +13,7 @@ def generate_launch_description():
     sl.declare_arg('y', default_value = 0, description='y-offset of the robot')
     use_gui = sl.declare_arg('use_gui', default_value = True, description='Use JSP gui')
 
-    xacro_args = sl.arg_map(('prefix', 'x', 'y'))
+    xacro_args = sl.arg_map('prefix', 'x', 'y')
     xacro_args['prefix'] += '/'  # can sum arguments and strings
 
     with sl.group(ns=sl.arg('prefix')):
