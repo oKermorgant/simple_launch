@@ -2,6 +2,17 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Gazebo basic example: launch SDF world + spawn from xacro
+* remove dead code related to Gazebo.
+* sl.arg returns a SimpleSubstitution to allow concatenation
+* auto-detect Gazebo world name, allows running the simulation + spawn models in the same launch file
+* Type debug on String being Iterable
+* better handling of non-string choices in argument declaration
+* more robust to various gz/ros combinations
+* Contributors: Olivier Kermorgant
+
 1.9.1 (2024-02-20)
 ------------------
 * simplify + debug logic of SimpleSubstitution divisions
