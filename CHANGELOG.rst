@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.9.2 (2024-03-25)
+------------------
 * Gazebo basic example: launch SDF world + spawn from xacro
 * remove dead code related to Gazebo.
 * sl.arg returns a SimpleSubstitution to allow concatenation
