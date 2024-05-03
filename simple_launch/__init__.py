@@ -12,7 +12,7 @@ from .simple_substitution import SimpleSubstitution, flatten
 from .group import Group
 from . import console
 from .gazebo import only_show_args, silent_exec, GazeboBridge, ros_gz_prefix, gz_launch_setup
-from typing import Text, List, Tuple
+from typing import Text, List, Iterable, Tuple, Union
 
 NODE_REMAPS = LAUNCH_ARGS = 1
 NODE_PARAMS = 2
@@ -109,7 +109,9 @@ class SimpleLauncher:
             console.error(f'declaring a launch argument "{name}" while inside an opaque function\nyou should declare the arguments before the function')
 
         def to_string_nested(elem):
-            if not isinstance(elem, (List, Tuple)):
+            if isinstance(elem, str):
+                return elem
+            elif not isinstance(elem, Iterable):
                 return str(elem)
             elem = list(elem)
             for i,item in enumerate(elem):
@@ -526,16 +528,22 @@ class SimpleLauncher:
         args = flatten([['-'+tag, self.arg(axis)] for axis,tag in axes.items() if axis in self.gz_axes])
         return [stringify(arg) for arg in args]
 
-    def create_gz_bridge(self, bridges: List[GazeboBridge], name = 'gz_bridge'):
+    def create_gz_bridge(self, bridges: Union[GazeboBridge,List[Union[GazeboBridge,Tuple]]], name = 'gz_bridge'):
         '''
         Create a ros_gz_bridge::parameter_bridge with the passed GazeboBridge instances
         The bridge has a default name if not specified
         If any bridge is used for sensor_msgs/Image, ros_{gz,ign}_image will be used instead
         '''
-        if type(bridges) not in (list, tuple):
+        # adapt types
+        if isinstance(bridges, GazeboBridge):
             bridges = [bridges]
         if len(bridges) == 0:
             return
+
+        # lazy list of bridges
+        for idx,bridge in enumerate(bridges):
+            if not isinstance(bridge, GazeboBridge):
+                bridges[idx] = GazeboBridge(*bridge)
 
         ros_gz = 'ros_' + ros_gz_prefix()
 

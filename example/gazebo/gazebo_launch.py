@@ -18,7 +18,7 @@ def generate_launch_description():
         # build bridges
         bridges = [GazeboBridge.clock()]
 
-        # cmd_vel for joints
+        # cmd_vel for joints with explicit GazeboBridge
         for joint in ('joint1', 'joint2', 'joint3'):
             bridges.append(GazeboBridge(f'{ns}/{joint}_cmd_vel', f'{joint}_cmd_vel',
                                         'std_msgs/Float64', GazeboBridge.ros2gz))
@@ -27,8 +27,8 @@ def generate_launch_description():
         gz_js_topic = GazeboBridge.model_prefix(ns) + '/joint_state'
         bridges.append(GazeboBridge(gz_js_topic, 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros))
 
-        # image
-        bridges.append(GazeboBridge(f'{ns}/image', 'image', 'sensor_msgs/Image', GazeboBridge.gz2ros))
+        # image with lazy construction (no GazeboBridge, only tuple with arguments)
+        bridges.append((f'{ns}/image', 'image', 'sensor_msgs/Image', GazeboBridge.gz2ros))
 
         sl.create_gz_bridge(bridges)
 
