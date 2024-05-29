@@ -1,5 +1,5 @@
 # OK general gitignore
-
+tests/
 .*
 # Compiled source #
 ###################

@@ -101,6 +101,10 @@ class SimpleLauncher:
             else:
                 console.info("SimpleLauncher(use_sim_time='auto'): no /clock topic found, forwarding use_sim_time:=False to all nodes")
 
+        # good candidate to replace tedious mechanics of use_sim_time
+        # but will not be forwared to e.g. events and other stuff
+        #self.add_action(SetParameter('use_sim_time', self.sim_time))
+
     def declare_arg(self, name, default_value = None, **kwargs):
         '''
         Add an argument to the launch file
@@ -356,8 +360,10 @@ class SimpleLauncher:
 
         if self.sim_time is not None:
             if 'parameters' in node_args:
-                if type(node_args['parameters'][0]) == dict and 'use_sim_time' not in node_args['parameters'][0]:
-                    node_args['parameters'][0]['use_sim_time'] = self.sim_time
+
+                if type(node_args['parameters'][0]) == dict:
+                    if 'use_sim_time' not in node_args['parameters'][0]:
+                        node_args['parameters'][0]['use_sim_time'] = self.sim_time
                 elif type(node_args['parameters'][0]) == str:
                     # yaml-file, check if it contains use_sim_time
                     config_file = node_args['parameters'][0]
@@ -367,8 +373,8 @@ class SimpleLauncher:
                         if not any(line.strip().startswith('use_sim_time') for line in config):
                             node_args['parameters'].append({'use_sim_time': self.sim_time})
                 else:
-                    console.neutral(f'skipping use_sim_time for node {package}/{executable}, cannot check if already here')
-#                    #node_args['parameters'] += [{'use_sim_time': self.sim_time}]
+                    console.neutral(f'node {package}/{executable} has an unkown config file, setting use_sim_time may fail')
+                    node_args['parameters'] += [{'use_sim_time': self.sim_time}]
             else:
                 node_args['parameters'] = [{'use_sim_time': self.sim_time}]
 
