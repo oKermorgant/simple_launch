@@ -63,11 +63,12 @@ def adapt_type(params, target):
 
 class SimpleLauncher:
 
-    def __init__(self, namespace = None, use_sim_time = None):
+    def __init__(self, namespace = None, use_sim_time = None, scope_included_files = False):
         '''
         Initializes entities in the given workspace
         If use_sim_time is True or False, creates a `use_sim_time` launch argument with this value as the default and forwards it to all nodes
         If use_sim_time is 'auto', then SimpleLauncher will set it to True if the /clock topic is advertized (case of an already running simulation)
+        scope_included_files will make this launch file include other ones with scoped arguments, so that modifying them does not override the ones of this launch file
         '''
         # group tree
         self.__groups = [Group(namespace)]
@@ -75,6 +76,7 @@ class SimpleLauncher:
         self.sim_time = None
         self.gz_axes = ('x','y','z','yaw','pitch','roll')
         self.__context = None
+        self.scope_included_files = scope_included_files
 
         if use_sim_time is None:
             return
@@ -398,9 +400,17 @@ class SimpleLauncher:
         Include another launch file
         '''
         launch_file = self.find(package, launch_file, launch_dir)
-        return self.add_action(IncludeLaunchDescription(
+
+        inclusion = IncludeLaunchDescription(
             AnyLaunchDescriptionSource(launch_file),
-            launch_arguments=adapt_type(launch_arguments, LAUNCH_ARGS)))
+            launch_arguments=adapt_type(launch_arguments, LAUNCH_ARGS))
+
+        if self.scope_included_files:
+            # run included launch in a group to avoid polluting my scope
+            from launch.actions import GroupAction
+            return self.add_action(GroupAction([inclusion]))
+        # just use default include behavior
+        return self.add_action(inclusion)
 
     def call_service(self, server, request = None, verbosity = '', **kwargs):
         '''
