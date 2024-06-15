@@ -452,8 +452,7 @@ class SimpleLauncher:
         return SimpleSubstitution("'", Command(cmd,on_stderr='warn'), "'")
 
     def robot_state_publisher(self, package=None, description_file=None, description_dir=None,
-                              xacro_args=None, prefix_gz_plugins=False,
-                              namespaced_tf = False, **node_args):
+                              xacro_args=None, **node_args):
         '''
         Add a robot state publisher node to the launch tree using the given description (urdf / xacro) file.
 
@@ -461,38 +460,17 @@ class SimpleLauncher:
         * description_file -- is the name of the urdf/xacro file
         * description_dir -- the name of the directory containing the file (None to have it found)
         * xacro_args -- arguments passed to xacro (will force use of xacro)
-        * prefix_gz_plugins -- will forward any frame_prefix to frame names published by Gazebo plugins
-        * namespaced_tf -- equivalent to remapping /tf and /tf_static to local namespace
-        * node_args -- any additional node arguments such as remappings
+        * node_args -- any additional node arguments such as remappings or parameters
         '''
 
         urdf_xml = self.robot_description(package, description_file, description_dir, xacro_args)
 
-        frame_prefix = ""
         if 'parameters' in node_args:
+            # already some parameters, change to list of dictionaries
             node_args['parameters'] = adapt_type(node_args['parameters'], NODE_PARAMS)
-            if 'frame_prefix' in node_args['parameters'][0]:
-                frame_prefix = node_args['parameters'][0]['frame_prefix']
+            + [{'robot_description': urdf_xml}]
         else:
-            node_args['parameters'] = []
-        frame_prefix = SimpleSubstitution("'", frame_prefix, "'")
-
-        if prefix_gz_plugins:
-            urdf_xml = Command(SimpleSubstitution(['ros2 run simple_launch frame_prefix_gazebo',
-                                                         ' -d ', urdf_xml,
-                                                         ' --frame_prefix ', frame_prefix]))
-
-        node_args['parameters'] += [{'robot_description': urdf_xml}]
-
-        if namespaced_tf:
-            remaps = {'/tf':'tf', '/tf_static':'tf_static'}
-            if 'remappings' in node_args:
-                if type(node_args['remappings']) == dict:
-                    node_args['remappings'].update(remaps)
-                else:
-                    node_args['remappings'] += [remaps]
-            else:
-                node_args['remappings'] = remaps
+            node_args['parameters'] = [{'robot_description': urdf_xml}]
 
         # Launch the robot state publisher with the desired URDF
         self.node("robot_state_publisher", **node_args)

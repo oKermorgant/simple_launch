@@ -265,13 +265,12 @@ If `file_name` is `None` then the function just returns the path to the package 
 
 It is quite common to run a `robot_state_publisher` from a `urdf` or `xacro` file. The line below runs it at the current namespace / condition level:
 
-`sl.robot_state_publisher(package, description_file, description_dir=None, xacro_args=None, prefix_gz_plugins=False, **node_args)` where
+`sl.robot_state_publisher(package, description_file, description_dir=None, xacro_args=None, **node_args)` where
 
 - `description_file` is a URDF or xacro file
 - `description_dir` is the sub-directory of the file. If omitted, let the script search for the file assuming it is a raw string
 - `xacro_args` is a dictionary of arguments to forward to xacro
-- `prefix_gz_plugins` is used only if a `frame_prefix` parameter is given to `robot_state_publisher`. In this case it will forward the frame prefix to Gazebo-published messages that include frame names
-- `node_args` are any additional arguments for `robot_state_publisher` (typically remapping)
+- `node_args` are any additional arguments for `robot_state_publisher` (remappings / parameters)
 
 ### Python expressions
 
