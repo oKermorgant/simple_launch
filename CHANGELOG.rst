@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
-------------------
+1.10.0 (2024-06-16)
+-------------------
 * scope_included_files to include other launch files in a Group and avoid changing my scope
 * remove dead code about prefixing gz plugins
 * forward sim_time even for nodes that load a parameter file
