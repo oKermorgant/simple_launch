@@ -2,7 +2,7 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.9.3 (2024-06-16)
+Forthcoming
 ------------------
 * scope_included_files to include other launch files in a Group and avoid changing my scope
 * remove dead code about prefixing gz plugins
