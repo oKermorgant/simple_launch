@@ -2,6 +2,14 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* scope_included_files to include other launch files in a Group and avoid changing my scope
+* remove dead code about prefixing gz plugins
+* forward sim_time even for nodes that load a parameter file
+* lazy GazeboBridge
+* Contributors: Olivier Kermorgant
+
 1.9.2 (2024-03-25)
 ------------------
 * Gazebo basic example: launch SDF world + spawn from xacro
