@@ -1,5 +1,5 @@
 from .simple_substitution import SimpleSubstitution
-from ament_index_python.packages import get_package_share_directory
+from ament_index_python.packages import get_package_share_directory, PackageNotFoundError
 from os.path import join, exists
 from . import console
 
@@ -78,7 +78,12 @@ def ros_gz_prefix():
         if env in environ:
             return 'ign' if environ[env] == 'fortress' else 'gz'
 
-    return 'ign' if environ['ROS_DISTRO'] < 'humble' else 'gz'
+    # guess from installed packages
+    try:
+        get_package_share_directory('ros_gz')
+        return 'gz'
+    except PackageNotFoundError:
+        return 'ign'
 
 
 class GazeboBridge:
@@ -204,20 +209,20 @@ class GazeboBridge:
                                     # "ROS_TO_IGN" - Bridge ROS topic
         '''
 
-        if self._gz_exec is None:
-            self._gz_exec = ros_gz_prefix()
+        if GazeboBridge._gz_exec is None:
+            GazeboBridge._gz_exec = ros_gz_prefix()
 
         direction = 'BIDIRECTIONAL'
         if self.direction == self.gz2ros:
-            direction = f'{self._gz_exec.upper()}_TO_ROS'
+            direction = f'{GazeboBridge._gz_exec.upper()}_TO_ROS'
         elif self.direction == self.ros2gz:
-            direction = f'ROS_TO_{self._gz_exec.upper()}'
+            direction = f'ROS_TO_{GazeboBridge._gz_exec.upper()}'
 
-        if self._gz_exec == 'ign':
+        if GazeboBridge._gz_exec == 'ign':
             self.gz_msg = self.gz_msg.replace('gz.','ignition.')
 
-        return SimpleSubstitution(f'- {self._gz_exec}_topic_name: ', self.gz_topic, '\n',
-                                 f'  {self._gz_exec}_type_name: ', self.gz_msg, '\n',
+        return SimpleSubstitution(f'- {GazeboBridge._gz_exec}_topic_name: ', self.gz_topic, '\n',
+                                 f'  {GazeboBridge._gz_exec}_type_name: ', self.gz_msg, '\n',
                                  '  ros_topic_name: ',self.ros_topic, '\n',
                                  '  ros_type_name: ', self.ros_msg, '\n',
                                  '  direction: ', direction, '\n')
@@ -247,7 +252,8 @@ class GazeboBridge:
             return GazeboBridge._world_name
 
         # GZ / IGN: look for a clue in compilation flag, otherwise try both
-        # up to Iron, Fortress is still the packaged one but probably not the used one
+        # up to Iron, Fortress is still the official one but probably not the used one
+        # assume users may use gz from Humble, and test this one first
         from os import environ
         candidates = ['gz', 'ign']
         if environ['ROS_DISTRO'] < 'humble':
@@ -277,6 +283,7 @@ class GazeboBridge:
 
     @staticmethod
     def model_prefix(model):
+        return f'/world/{GazeboBridge.world()}/model/' + model
         if isinstance(model, str):
             return f"/world/{GazeboBridge.world()}/model/{model}"
         return SimpleSubstitution(f"/world/{GazeboBridge.world()}/model/", model)
@@ -288,3 +295,8 @@ class GazeboBridge:
     @staticmethod
     def clock():
         return GazeboBridge('/clock', '/clock', 'rosgraph_msgs/msg/Clock', GazeboBridge.gz2ros)
+
+    @staticmethod
+    def joint_states_bridge(model):
+        js_gz_topic = f'/world/{GazeboBridge.world()}/model/' + model + '/joint_state'
+        return GazeboBridge(js_gz_topic, 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros)

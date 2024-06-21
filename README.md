@@ -366,13 +366,13 @@ An instance is created with: `bridge = GazeboBridge(<gazebo_topic>, <ros_topic>,
 
 The Gazebo message type is [deduced from the ROS message type](https://github.com/gazebosim/ros_gz/tree/ros2/ros_gz_bridge) if not set. Remapping will be set to the given `ros_topic`.
 
-The SimpleLauncher instance can then run all created bridges with: `sl.create_gz_bridge([bridges], <node_name>)`, as illustrated in the examples at this end of this document.
+The SimpleLauncher instance can then run a node dealing with declared bridges, as illustrated in the examples at this end of this document.
+
+- ```sl.create_gz_bridge([bridges], <node_name>)```
+
 If some bridges involve `sensor_msgs/Image` then a dedicated `ros_gz_image` bridge will be used. The corresponding `camera_info` topic will be also bridged.
 
-A common instance of the bridge is the clock. This one can be:
 
-- created with `GazeboBridge.clock()`: returns a `GazeboBridge` instance, not added to any node yet
-- or run directly with `sl.create_gz_clock_bridge()` (actually runs `sl.create_gz_bridge(GazeboBridge.clock())`)
 
 ### Interaction with Gazebo sim
 
@@ -386,11 +386,30 @@ The `GazeboBridge` class has a few static methods to get information on the simu
 
 They can be used under these conditions:
 
-- `sl.gz_launch` was called first (in the same launch file) and the world file could be parsed, in this case the world name from the file is used
-- or `GazeboBridge.set_world_name(world)` was called first (in the same launch file), in this case this world name is used
+- `sl.gz_launch` was called first (in the same launch setup) and the world file could be parsed, in this case the world name from the file is used
+- or `GazeboBridge.set_world_name(world)` was called first (in the same launch setup), in this case this world name is used
 - if none of the above and a **running Gazebo** instance exists, in this case `GazeboBridge` will request information on the world
 
 If none of these conditions hold, the launch file will not be able to get information on the world, and launch fill probably fail.
+
+### Built-in bridges
+
+A common instance of the bridge is the clock. This one can be:
+
+- created with `GazeboBridge.clock()`: returns a `GazeboBridge` instance, not added to any node yet
+- or run directly with `sl.create_gz_clock_bridge()` (actually runs `sl.create_gz_bridge(GazeboBridge.clock())`)
+
+Another common but tedious bridge instance is the joint state topic of a given model. This topic includes, in Gazebo, the name of the world *and* of the model. Assuming the world name is known, the corresponding bridge can be created with:
+
+- `GazeboBridge.joint_states_bridge(model)`
+- actually runs `GazeboBridge('/world/<world>/model/<model>/joint_state', 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros)`
+
+### World TF publisher
+
+If `/tf` is used with Gazebo, then the root frame used by Gazebo depends on the world name. This frame is usually `world` on the ROS side.
+A trivial `static_transform_publisher` is run to connect these two frames if they have different names:
+
+- `sl.gz_world_tf(world_frame = None)`: run a `static_transform_publisher` from `world` to `world_frame`. If `None` then detect the one currently used by Gazebo.
 
 ## Examples
 

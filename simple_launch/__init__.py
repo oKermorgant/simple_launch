@@ -582,6 +582,17 @@ class SimpleLauncher:
                       arguments = [bridge.gz_topic for bridge in im_bridges],
                       remappings = remappings)
 
+    def gz_world_tf(self, world_frame = None):
+        '''
+        Runs a static_transform_publisher to connect `world` and Gazebo world name, if different from `world`
+        '''
+        if world_frame is None:
+            world_frame = GazeboBridge.world()
+        if world_frame != 'world':
+            self.node('tf2_ros', 'static_transform_publisher',
+                      name = 'gz_world_tf',
+                      arguments = ['--frame-id', 'world','--child-frame-id', world_frame])
+
     def create_gz_clock_bridge(self, name = 'gz_clock_bridge'):
         '''
         Create a ros_gz_bridge::parameter_bridge for the /clock topic
