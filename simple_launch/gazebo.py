@@ -269,7 +269,8 @@ class GazeboBridge:
         # try to call Gazebo according to the exec candidates, that should be running at this point
         for GazeboBridge._gz_exec in candidates:
             out = silent_exec([GazeboBridge._gz_exec, 'model', '--list'])
-            if 'timed out' in out:
+            if out == '' or 'timed out' in out:
+                # either this exec is not here or it is not the one running
                 continue
             GazeboBridge._world_name = out.replace(']','[').split('[')[1]
             break
