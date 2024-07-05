@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.10.1 (2024-07-05)
+-------------------
 * check for gz/ign executable being available
 * gz_world_tf + better guess on Gz vs Ign
 * Contributors: Olivier Kermorgant
