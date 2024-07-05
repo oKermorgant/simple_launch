@@ -2,6 +2,12 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* check for gz/ign executable being available
+* gz_world_tf + better guess on Gz vs Ign
+* Contributors: Olivier Kermorgant
+
 1.10.0 (2024-06-16)
 -------------------
 * scope_included_files to include other launch files in a Group and avoid changing my scope
