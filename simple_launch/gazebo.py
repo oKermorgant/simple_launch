@@ -30,8 +30,15 @@ def silent_exec(cmd):
 gz_launched_worlds = []
 
 
-def gz_launch_setup(world_file = None, gz_args = None):
-    full_args = ' '.join(arg for arg in [world_file, gz_args] if arg is not None)
+def gz_launch_setup(world_file, gz_args = None):
+
+    if isinstance(world_file, str) and (gz_args is None or isinstance(gz_args, str)):
+        full_args = world_file
+        if gz_args is not None:
+            full_args += ' ' + gz_args
+    else:
+        # some substitutions
+        full_args = SimpleSubstitution(world_file, ' ', gz_args)
 
     if ros_gz_prefix() == 'gz':
         launch_file = join(get_package_share_directory('ros_gz_sim'), 'launch', 'gz_sim.launch.py')
@@ -41,32 +48,33 @@ def gz_launch_setup(world_file = None, gz_args = None):
         launch_arguments = {'ign_args': full_args}
 
     # adapt to previous syntax to retrieve world file if not explicit
-    if exists(world_file):
-        valid_file = world_file
-    else:
-        valid_file = [arg for arg in full_args.split() if exists(arg)]
-        valid_file = valid_file[0] if valid_file else None
-
-    show_gz_info = not only_show_args()
-    console_msg = console.warn
-
-    if valid_file:
-        show_gz_info = show_gz_info and valid_file not in gz_launched_worlds
-        gz_launched_worlds.append(valid_file)
-        line = silent_exec(f"grep 'world name' {valid_file}")
-        # line =  <world name="some_world">\n'
-        world = line.split('"')[1]
-        if world:
-            msg = f'Gazebo world "{world}" found @ {valid_file}'
-            console_msg = console.info
-            GazeboBridge.set_world_name(line.split('"')[1])
+    if isinstance(full_args, str):
+        if exists(world_file):
+            valid_file = world_file
         else:
-            msg = f'Could not get the name of Gazebo world {valid_file}'
-    else:
-        msg = f'Could not read Gazebo world @ "{world_file}"'
+            valid_file = [arg for arg in full_args.split() if exists(arg)]
+            valid_file = valid_file[0] if valid_file else None
 
-    if show_gz_info:
-        console_msg(msg)
+        show_gz_info = not only_show_args()
+        console_msg = console.warn
+
+        if valid_file:
+            show_gz_info = show_gz_info and valid_file not in gz_launched_worlds
+            gz_launched_worlds.append(valid_file)
+            line = silent_exec(f"grep 'world name' {valid_file}")
+            # line =  <world name="some_world">\n'
+            world = line.split('"')[1]
+            if world:
+                msg = f'Gazebo world "{world}" found @ {valid_file}'
+                console_msg = console.info
+                GazeboBridge.set_world_name(line.split('"')[1])
+            else:
+                msg = f'Could not get the name of Gazebo world {valid_file}'
+        else:
+            msg = f'Could not read Gazebo world @ "{world_file}"'
+
+        if show_gz_info:
+            console_msg(msg)
 
     return launch_file, launch_arguments
 

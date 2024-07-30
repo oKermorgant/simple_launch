@@ -600,7 +600,7 @@ class SimpleLauncher:
         '''
         self.create_gz_bridge(GazeboBridge.clock(), name)
 
-    def gz_launch(self, world_file = None, gz_args = None):
+    def gz_launch(self, world_file, gz_args = None):
         '''
         Wraps gz_sim_launch to be Ignition/GzSim agnostic
         default version is Fortress (6), will use GZ_VERSION if present
