@@ -1,5 +1,6 @@
 # OK general gitignore
 tests/
+demo_world_full.sdf
 .*
 # Compiled source #
 ###################

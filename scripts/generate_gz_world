@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+
+from subprocess import check_output
+import sys
+import shlex
+from simple_launch.gazebo import ros_gz_prefix
+import os
+
+gz = ros_gz_prefix()
+gz_ns = 'gz' if gz == 'gz' else 'ignition'
+
+paths = os.environ[f'{gz.upper()}_SIM_RESOURCE_PATH'].split(':')
+
+urdf_file = '/tmp/urdf.gz'
+
+
+def extract(line, tag):
+
+    if f'<{tag}>' not in line:
+        return None
+    return line.split(f'{tag}>')[1][:-2]
+
+
+def resolve_include(sdf):
+
+    uri = extract(sdf, 'uri')
+
+    if uri is None or not uri.startswith('file:'):
+        return sdf
+
+    # adapt uri
+    uri = uri[7:]
+
+    if os.path.exists(uri):
+        # resolve to package
+        for path in paths:
+            if uri.startswith(path):
+                dst = f'package:/{uri[len(path):]}'
+                sdf = sdf.replace(f'file://{uri}', dst)
+                print('Found include:', uri)
+                print('                 -> ', dst)
+                break
+    elif uri == '<urdf-string>':
+        name = extract(sdf, 'name')
+        pose = extract(sdf, 'pose')
+        print('Found urdf:', name, '@',pose)
+        urdf = run(f'ros2 param get /{name}/robot_state_publisher robot_description')
+        print('                 -> got robot description')
+        urdf = urdf.split(':',1)[1]
+
+        with open(urdf_file, 'w') as f:
+            f.write(urdf)
+
+        sdf = run(f'{gz} sdf -p {urdf_file}').splitlines()[1:-1]
+        if pose is not None:
+            sdf[0] += f'\n    <pose>{pose}</pose>'
+        sdf = '\n'.join(sdf)
+    return sdf
+
+
+def run(cmd):
+    return check_output(shlex.split(cmd)).decode('utf8')
+
+
+dst = 'world_full.sdf' if len(sys.argv) == 1 else sys.argv[1]
+
+
+# generate a world file from a running Gazebo simulation
+sdf_srv = ''
+
+print('Getting world name...')
+while True:
+    srvs = run(f'{gz} service -l').splitlines()
+    sdf_srv = [srv for srv in srvs if 'generate_world_sdf' in srv]
+    if sdf_srv:
+        sdf_srv = sdf_srv[0]
+        break
+
+print('Getting sdf output...')
+sdf = run(f"{gz} service -s {sdf_srv} --reqtype {gz_ns}.msgs.SdfGeneratorConfig --reptype {gz_ns}.msgs.StringMsg -r ''").split(':',1)[1].strip().strip('"')
+sdf = sdf.replace('\\n','\n').replace("\\'",'\"').splitlines()
+
+
+sdf_full = []
+block = None
+
+for line in sdf:
+
+    if '<include' in line:
+        block = ''
+
+    if block is not None:
+        block += '\n' + line
+        if '</include' in line:
+            sdf_full.append(resolve_include(block))
+            block = None
+    else:
+        sdf_full.append(line)
+
+with open(dst, 'w') as out:
+    out.write('\n'.join(sdf_full))

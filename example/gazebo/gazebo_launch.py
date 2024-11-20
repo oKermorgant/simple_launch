@@ -1,12 +1,19 @@
 from simple_launch import SimpleLauncher, GazeboBridge
+import os
 
 
 def generate_launch_description():
 
     sl = SimpleLauncher(use_sim_time=True)
 
-    # run the simulation
-    sl.gz_launch(sl.find('simple_launch', 'demo_world.sdf'), '-r')
+    # run the simulation either with base world or full one
+    full_world = os.path.dirname(__file__) + '/demo_world_full.sdf'
+    if os.path.exists(full_world):
+        sl.gz_launch(full_world, '-r')
+    else:
+        sl.gz_launch(sl.find('simple_launch', 'demo_world.sdf'), '-r')
+        # we will spawn a URDF, save the resulting world for later
+        sl.save_gz_world(full_world, 5.)
 
     ns = 'turret'
     with sl.group(ns = ns):

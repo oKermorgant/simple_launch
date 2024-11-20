@@ -238,7 +238,7 @@ class SimpleLauncher:
 
         # deal with non-resolvable package - cannot find anything in there
         def is_substitution(elem):
-            return elem is not None and type(elem) != str
+            return elem is not None and not isinstance(elem, str)
         
         if is_substitution(package) or is_substitution(file_name) or is_substitution(file_dir):
             return self.path_join(package_dir, file_dir, file_name)
@@ -607,6 +607,15 @@ class SimpleLauncher:
         '''
         launch_file, launch_arguments = gz_launch_setup(world_file, gz_args)
         return self.include(launch_file = launch_file, launch_arguments = launch_arguments)
+
+    def save_gz_world(self, dst, after = 1.):
+        '''
+        Saves the current world under dst
+        Resolves any spawned URDF through their description parameter and converts to SDF
+        '''
+        from . import events
+        with self.group(when = events.When(delay = after)):
+            self.node('simple_launch', 'generate_gz_world', arguments = [dst])
 
     def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = []):
         '''
