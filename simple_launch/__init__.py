@@ -613,8 +613,8 @@ class SimpleLauncher:
         Saves the current world under dst
         Resolves any spawned URDF through their description parameter and converts to SDF
         '''
-        from . import events
-        with self.group(when = events.When(delay = after)):
+        from .events import When
+        with self.group(when = When(delay = after)):
             self.node('simple_launch', 'generate_gz_world', arguments = [dst])
 
     def spawn_gz_model(self, name, topic = 'robot_description', model_file = None, spawn_args = []):

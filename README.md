@@ -358,11 +358,11 @@ sl.spawn_gz_model(name, spawn_args = sl.gazebo_axes_args())
 
 If the simulation is reset after some models have been spawned, they will disappear. A convenient way to avoid this is to generate the full SDF world from a running simulation. The Gazebo GUI is able to export the current world but cannot resolve models that were spawned from e.g. a `robot_description` topic.
 
-The script `generate_gz_world` will generate a SDF corresponding to the current simulation. If some models have been spawned from URDF and topics, the script will get the corresponding `robot_description` parameters and insert it into the SDF. It can also be called from a launch file with (see Gazebo example):
+The script `generate_gz_world` will generate a SDF corresponding to the current simulation. If some models have been spawned from URDF and topics, the script will get the corresponding description and insert it into the SDF, assuming robot `name` has its description under `/name/robot_description`. It can also be called from a launch file with (see Gazebo example):
 
 ```
 # you might want to add a delay to be sure all models have been spawned
-sl.save_gz_world(full_world.sdf, delay [s])
+sl.save_gz_world(full_world.sdf, after = 1.)
 ```
 
 Such a self-contained SDF world file is then compatible with a reset of the simulation. See Gazebo example for launch file that checks if the full world is available.
