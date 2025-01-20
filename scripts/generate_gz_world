@@ -11,7 +11,7 @@ gz_ns = 'gz' if gz == 'gz' else 'ignition'
 
 paths = os.environ[f'{gz.upper()}_SIM_RESOURCE_PATH'].split(':')
 
-urdf_file = '/tmp/urdf.gz'
+urdf_file = '/tmp/gz_model.urdf'
 
 
 def extract(line, tag):
@@ -46,12 +46,12 @@ def resolve_include(sdf):
         print('Found urdf:', name, '@',pose)
         urdf = run(f'ros2 param get /{name}/robot_state_publisher robot_description')
         print('                 -> got robot description')
-        urdf = urdf.split(':',1)[1]
 
+        urdf = urdf.split(':',1)[1]
         with open(urdf_file, 'w') as f:
             f.write(urdf)
-
         sdf = run(f'{gz} sdf -p {urdf_file}').splitlines()[1:-1]
+
         if pose is not None:
             sdf[0] += f'\n    <pose>{pose}</pose>'
         sdf = '\n'.join(sdf)

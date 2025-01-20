@@ -600,15 +600,23 @@ class SimpleLauncher:
         '''
         self.create_gz_bridge(GazeboBridge.clock(), name)
 
-    def gz_launch(self, world_file, gz_args = None):
+    def gz_launch(self, world_file, gz_args = None, full_world = None, save_after = 5.):
         '''
         Wraps gz_sim_launch to be Ignition/GzSim agnostic
         default version is Fortress (6), will use GZ_VERSION if present
+        if `full_world` is given as a raw `string` then the resulting SDF will be saved, including base world and spawned entities
         '''
-        launch_file, launch_arguments = gz_launch_setup(world_file, gz_args)
+        if isinstance(full_world, str):
+            if exists(full_world):
+                launch_file, launch_arguments = gz_launch_setup(full_world, gz_args)
+            else:
+                launch_file, launch_arguments = gz_launch_setup(world_file, gz_args)
+                self.save_gz_world(full_world, save_after)
+        else:
+            launch_file, launch_arguments = gz_launch_setup(world_file, gz_args)
         return self.include(launch_file = launch_file, launch_arguments = launch_arguments)
 
-    def save_gz_world(self, dst, after = 1.):
+    def save_gz_world(self, dst, after = 5.):
         '''
         Saves the current world under dst
         Resolves any spawned URDF through their description parameter and converts to SDF

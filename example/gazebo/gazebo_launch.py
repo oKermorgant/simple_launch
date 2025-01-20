@@ -8,12 +8,8 @@ def generate_launch_description():
 
     # run the simulation either with base world or full one
     full_world = os.path.dirname(__file__) + '/demo_world_full.sdf'
-    if os.path.exists(full_world):
-        sl.gz_launch(full_world, '-r')
-    else:
-        sl.gz_launch(sl.find('simple_launch', 'demo_world.sdf'), '-r')
-        # we will spawn a URDF, save the resulting world for later
-        sl.save_gz_world(full_world, 5.)
+    sl.gz_launch(sl.find('simple_launch', 'demo_world.sdf'), '-r',
+                  full_world)
 
     ns = 'turret'
     with sl.group(ns = ns):

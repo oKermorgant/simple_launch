@@ -320,12 +320,14 @@ An effort was made to be robust to Ignition versus Gazebo uses, i.e. *ign* prefi
 
 The Gazebo launch file corresponding to the current ROS 2 distribution is launched with
 ```
-sl.gz_launch(world_file, gz_arguments)
+sl.gz_launch(world_file, gz_arguments, full_world = None, save_after = 5.)
 ```
 Namely, it will redirect to either `ros_ign_gazebo/ign_gazebo.launch.py` (`foxy`, `galactic`) or `ros_gz_sim/gz_sim.launch.py` (`humble`+).
 The given `gz_arguments`, if any, will be forwarded either as the `ign_args` or `gz_args`, accordingly.
 
 If the world file can be parsed then `SimpleLaunch` will detect its name and forward it to `GazeboBridge` functions.
+
+If `full_world` is a raw string then the world will be saved into this file after the delay. This will include any URDF that was spawned in between.
 
 ### Spawn a model
 
