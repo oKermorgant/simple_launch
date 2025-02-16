@@ -2,6 +2,12 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* handle gz world export to SDF after some delay
+* make gz_launch compatible with substitutions
+* Contributors: Olivier Kermorgant
+
 1.10.1 (2024-07-05)
 -------------------
 * check for gz/ign executable being available
