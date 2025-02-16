@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.11.0 (2025-02-16)
+-------------------
 * handle gz world export to SDF after some delay
 * make gz_launch compatible with substitutions
 * Contributors: Olivier Kermorgant

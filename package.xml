@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>simple_launch</name>
-  <version>1.10.1</version>
+  <version>1.11.0</version>
   <description>
     Python helper class for the ROS 2 launch system
   </description>
