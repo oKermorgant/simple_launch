@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.11.1 (2025-11-21)
+-------------------
 * update Readme about XML launch files
 * typo in gz_generate_world
 * Contributors: Olivier Kermorgant
