@@ -7,6 +7,8 @@ The motivation behind this package is that the ROS 2 launch Python syntax may no
 
 The entry point is the `SimpleLauncher` class, which has several capabilities.
 
+**Note** as of ROS 2 Humble the XML launch syntax is almost feature-equal to Python. For simple cases it might be enough, and `simple_launch` can be used for more advanced Python usage.
+
 ## Basic syntax
 
 ### Namespace and argument parser initialization

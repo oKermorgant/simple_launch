@@ -4,6 +4,7 @@ Changelog for package simple_launch
 
 Forthcoming
 -----------
+* update Readme about XML launch files
 * typo in gz_generate_world
 * Contributors: Olivier Kermorgant
 
