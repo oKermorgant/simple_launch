@@ -2,6 +2,11 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* typo in gz_generate_world
+* Contributors: Olivier Kermorgant
+
 1.11.0 (2025-02-16)
 -------------------
 * handle gz world export to SDF after some delay
