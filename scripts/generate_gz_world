@@ -48,6 +48,11 @@ def resolve_include(sdf):
         print('                 -> got robot description')
 
         urdf = urdf.split(':',1)[1]
+
+        # replace with Gazebo name
+        begin = urdf.find('<robot name=')
+        end = urdf.find('>', begin)+1
+        urdf = urdf.replace(urdf[begin:end], f'<robot name="{name}">')
         with open(urdf_file, 'w') as f:
             f.write(urdf)
         sdf = run(f'{gz} sdf -p {urdf_file}').splitlines()[1:-1]
