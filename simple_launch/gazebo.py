@@ -303,9 +303,15 @@ class GazeboBridge:
 
     @staticmethod
     def clock():
+        '''
+        Classical GZ -> ROS bridge for clock topic
+        '''
         return GazeboBridge('/clock', '/clock', 'rosgraph_msgs/msg/Clock', GazeboBridge.gz2ros)
 
     @staticmethod
     def joint_states_bridge(model):
+        '''
+        Classical GZ -> ROS bridge for joint states of a given model
+        '''
         js_gz_topic = f'/world/{GazeboBridge.world()}/model/' + model + '/joint_state'
         return GazeboBridge(js_gz_topic, 'joint_states', 'sensor_msgs/JointState', GazeboBridge.gz2ros)
