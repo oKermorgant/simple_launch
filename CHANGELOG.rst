@@ -2,6 +2,12 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* always try_perform when returning a Substitution
+* event example was missing
+* Contributors: Olivier Kermorgant
+
 1.11.1 (2025-11-21)
 -------------------
 * update Readme about XML launch files
