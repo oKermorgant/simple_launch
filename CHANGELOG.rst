@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.11.2 (2026-02-02)
+-------------------
 * always try_perform when returning a Substitution
 * event example was missing
 * Contributors: Olivier Kermorgant
