@@ -210,6 +210,17 @@ class SimpleLauncher:
             pass
         return performed
 
+    def as_str(self, substitution):
+        '''
+        Explicitely request the substitution to be returned as raw string.
+        Only valid inside an OpaqueFunction, will raise otherwise.
+        '''
+
+        if isinstance(substitution, Text) or self.__has_context():
+            return self.__try_perform(substitution)
+        raise(TypeError('Cannot convert substitution to text without a context. Use this function from an OpaqueFunction'))
+
+
     def py_eval(self, *elems):
         '''
         Evaluates the Python expression
@@ -459,7 +470,7 @@ class SimpleLauncher:
         cmd = SimpleSubstitution('xacro ', description_file)
         if xacro_args is not None:
             cmd += adapt_type(xacro_args, XACRO_ARGS)
-        return SimpleSubstitution("'", Command(cmd,on_stderr='warn'), "'")
+        return self.__try_perform(SimpleSubstitution("'", Command(cmd,on_stderr='warn'), "'"))
 
     def robot_state_publisher(self, package=None, description_file=None, description_dir=None,
                               xacro_args=None, **node_args):
