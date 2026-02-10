@@ -257,7 +257,7 @@ When inside an OpaqueFunction, some functions might still return a `Substitution
 
 ```Python
 cmd = Command('ros2 topic list'.split())  # returns a Substitution
-sl.as_str(cmd)  # evaluates the Substitution to a string, if inside an OpaqueFunction
+sl.as_raw_type(cmd)  # evaluates the Substitution as a string, if inside an OpaqueFunction
 ```
 
 

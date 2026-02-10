@@ -210,9 +210,9 @@ class SimpleLauncher:
             pass
         return performed
 
-    def as_str(self, substitution):
+    def as_raw_type(self, substitution):
         '''
-        Explicitely request the substitution to be returned as raw string.
+        Explicitely request the substitution to be returned as raw type.
         Only valid inside an OpaqueFunction, will raise otherwise.
         '''
 
