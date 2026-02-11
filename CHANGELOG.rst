@@ -2,6 +2,12 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* do not add commas when performing xacro output
+* as_raw_type instead of as_str
+* Contributors: Olivier Kermorgant
+
 1.11.2 (2026-02-02)
 -------------------
 * always try_perform when returning a Substitution
