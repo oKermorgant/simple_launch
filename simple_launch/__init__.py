@@ -470,7 +470,10 @@ class SimpleLauncher:
         cmd = SimpleSubstitution('xacro ', description_file)
         if xacro_args is not None:
             cmd += adapt_type(xacro_args, XACRO_ARGS)
-        return self.__try_perform(SimpleSubstitution("'", Command(cmd,on_stderr='warn'), "'"))
+        if self.__has_context():
+            return self.__try_perform(SimpleSubstitution(Command(cmd,on_stderr='warn')))
+
+        return SimpleSubstitution("'", Command(cmd,on_stderr='warn'), "'")
 
     def robot_state_publisher(self, package=None, description_file=None, description_dir=None,
                               xacro_args=None, **node_args):
