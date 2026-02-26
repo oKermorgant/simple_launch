@@ -53,9 +53,9 @@ class Group:
                 ns_tree = list(map(PushRosNamespace, self.__ns))
                 group = GroupAction(ns_tree + self.__actions, condition=self.__condition)
             if self.__when is not None:
-                self.__root.add_action(self.__when.register(group))
+                self.__parent.add_action(self.__when.register(group))
             else:
-                self.__root.add_action(group)
+                self.__parent.add_action(group)
 
         return self.__parent
 
