@@ -5,6 +5,7 @@ import os
 def generate_launch_description():
 
     sl = SimpleLauncher(use_sim_time=True)
+    sl.declare_gazebo_axes(x=-1., y=0., z=0., roll=0.,pitch=0., yaw=0.)
 
     # run the simulation either with base world or full one
     full_world = os.path.dirname(__file__) + '/demo_world_full.sdf'
@@ -16,7 +17,7 @@ def generate_launch_description():
 
         sl.robot_state_publisher('simple_launch', 'turret.xacro', xacro_args={'prefix': ns+'/'})
 
-        sl.spawn_gz_model(ns)
+        sl.spawn_gz_model(ns, spawn_args=sl.gazebo_axes_args())
 
         # build bridges
         bridges = [GazeboBridge.clock()]
