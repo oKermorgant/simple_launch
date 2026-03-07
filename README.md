@@ -9,6 +9,25 @@ The entry point is the `SimpleLauncher` class, which has several capabilities.
 
 **Note** as of ROS 2 Humble the XML launch syntax is almost feature-equal to Python. For simple cases it might be enough, and `simple_launch` can be used for more advanced usage (notably Gazebo interaction).
 
+#### ROS Packages
+
+ <table>
+    <tbody>
+        <tr>
+            <td>Humble</td>
+            <td><a href="http://build.ros2.org/job/Hbin_uJ64__simple_launch__ubuntu_jammy_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Hbin_uJ64__simple_launch__ubuntu_jammy_amd64__binary" alt="Build Status"/></td>
+        </tr>
+        <tr>
+            <td>Jazzy</td>
+            <td><a href="http://build.ros2.org/job/Jbin_uN64__simple_launch__ubuntu_noble_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Jbin_uN64__simple_launch__ubuntu_noble_amd64__binary" alt="Build Status"/></td>
+        </tr>
+        <tr>
+            <td>Rolling</td>
+            <td><a href="http://build.ros2.org/job/Rbin_uN64__simple_launch__ubuntu_noble_amd64__binary/"><img src="http://build.ros2.org/buildStatus/icon?job=Rbin_uN64__simple_launch__ubuntu_noble_amd64__binary" alt="Build Status"/></td>
+        </tr>
+    </tbody>
+</table>
+
 ## Basic syntax
 
 ### Namespace and argument parser initialization
