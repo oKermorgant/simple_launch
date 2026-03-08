@@ -589,7 +589,7 @@ class SimpleLauncher:
             # use remapping to ROS topics
             remappings = []
             for bridge in im_bridges:
-                for ext in ('', '/compressed', '/compressedDepth', '/theora'):
+                for ext in ('', '/compressed', '/compressedDepth', '/theora', '/zstd'):
                     remappings.append((SimpleSubstitution(bridge.gz_topic,ext), SimpleSubstitution(bridge.ros_topic,ext)))
 
             self.node(f'{ros_gz}_image', 'image_bridge', name=SimpleSubstitution(name, '_image'),
