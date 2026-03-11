@@ -16,13 +16,13 @@ class Group:
         self.__when = when
 
         # inherit namespace from this branch
-        ns = [ns] if ns is not None else []
+        self.__ns = [ns] if ns is not None else []
         if parent is None:
             self.__root = self
-            self.__ns = ns
+            self.__ns_tree = self.__ns
         else:
             self.__root = parent.__root
-            self.__ns = parent.__ns + ns
+            self.__ns_tree = parent.__ns_tree + self.__ns
 
         # actions are always active and added to the root group
         self.__actions = []
@@ -50,8 +50,11 @@ class Group:
                 # skip GroupAction as it makes it not callable
                 group = self.__actions
             else:
-                ns_tree = list(map(PushRosNamespace, self.__ns))
-                group = GroupAction(ns_tree + self.__actions, condition=self.__condition)
+                # ns tree goes up to the root in the case of events
+                ns_tree = self.__ns if self.__when is None else self.__ns_tree
+                group = GroupAction(list(map(PushRosNamespace, ns_tree))
+                                    + self.__actions, condition=self.__condition)
+
             if self.__when is not None:
                 self.__parent.add_action(self.__when.register(group))
             else:
