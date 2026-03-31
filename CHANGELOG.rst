@@ -2,6 +2,16 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* handle local or global namespace when adding groups with events
+* remap /zstd sup-topic for gz image bridge
+* add build status
+* gz launch robust to commas vs quotation marks
+* Merge pull request `#8 <https://github.com/oKermorgant/simple_launch/issues/8>`_ from aurzenligl/devel
+  add group to parent rather than root group, fixes nested groups
+* Contributors: Krzysztof Laskowski, Olivier Kermorgant
+
 1.11.3 (2026-02-11)
 -------------------
 * do not add commas when performing xacro output
