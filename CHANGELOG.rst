@@ -2,8 +2,8 @@
 Changelog for package simple_launch
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+1.11.4 (2026-03-31)
+-------------------
 * handle local or global namespace when adding groups with events
 * remap /zstd sup-topic for gz image bridge
 * add build status
