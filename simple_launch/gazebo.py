@@ -195,7 +195,7 @@ class GazeboBridge:
             self.gz_msg = self.msg_map[ros_msg]
 
         if not GazeboBridge.valid(direction):
-            console.error(f'Cannot build ros <-> gz bridge with direction "{direction}": use GazeboBrige.{{gz2ros,ros2gz,bidirectional}}')
+            console.error(f'Cannot build ros <-> gz bridge with direction "{direction}": use GazeboBrige.{{gz2ros,ros2gz,bidirectional}} for {gz_topic} and {ros_topic}')
             return
 
         self.gz_topic = SimpleSubstitution(gz_topic)
