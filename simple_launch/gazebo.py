@@ -17,13 +17,13 @@ def silent_exec(cmd):
     Executes the given command and returns the output
     Returns an empty list if any error
     '''
-    from subprocess import check_output, STDOUT
+    from subprocess import CalledProcessError, check_output, STDOUT
     if isinstance(cmd, str):
         from shlex import split
         cmd = split(cmd)
     try:
         return check_output(cmd, stderr=STDOUT).decode()
-    except:
+    except (CalledProcessError, OSError, UnicodeDecodeError):
         return ''
 
 
