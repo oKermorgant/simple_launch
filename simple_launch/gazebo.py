@@ -178,7 +178,8 @@ class GazeboBridge:
     'vision_msgs/msg/Detection2D': 'gz.msgs.AnnotatedAxisAligned2DBox',
     'vision_msgs/msg/Detection2DArray': 'gz.msgs.AnnotatedAxisAligned2DBox_V'}
 
-    def __init__(self, gz_topic, ros_topic, ros_msg, direction, gz_msg = None):
+    def __init__(self, gz_topic, ros_topic, ros_msg, direction,
+                 gz_msg = None, frame_id = None):
         '''
         Create a bridge instance to be passed to SimpleLauncher.create_gz_bridge
         '''
@@ -205,6 +206,7 @@ class GazeboBridge:
         self.is_image = ros_msg == 'sensor_msgs/msg/Image'
         self.direction = direction
         self.ros_msg = ros_msg
+        self.frame_id = frame_id
 
     def yaml(self):
         '''
@@ -230,11 +232,16 @@ class GazeboBridge:
         if GazeboBridge._gz_exec == 'ign':
             self.gz_msg = self.gz_msg.replace('gz.','ignition.')
 
-        return SimpleSubstitution(f'- {GazeboBridge._gz_exec}_topic_name: ', self.gz_topic, '\n',
-                                 f'  {GazeboBridge._gz_exec}_type_name: ', self.gz_msg, '\n',
-                                 '  ros_topic_name: ',self.ros_topic, '\n',
-                                 '  ros_type_name: ', self.ros_msg, '\n',
-                                 '  direction: ', direction, '\n')
+        bridge_args = [(f'- {GazeboBridge._gz_exec}_topic_name', self.gz_topic),
+                       (f'  {GazeboBridge._gz_exec}_type_name', self.gz_msg),
+                        ('  ros_topic_name', self.ros_topic),
+                        ('  ros_type_name', self.ros_msg),
+                        ('  direction', direction)]
+
+        if self.frame_id is not None:
+            bridge_args.append(('  frame_id', self.frame_id))
+
+        return SimpleSubstitution([(key+': ', val, '\n') for key, val in bridge_args])
 
     @staticmethod
     def valid(direction):

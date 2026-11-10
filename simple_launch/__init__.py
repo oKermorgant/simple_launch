@@ -1,4 +1,4 @@
-from os.path import join, exists
+from os.path import join, exists, basename
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription, Substitution
 from launch_ros.actions import Node, ComposableNodeContainer, LoadComposableNodes
@@ -571,7 +571,7 @@ class SimpleLauncher:
                 idx = tail.rfind('image')
                 cam.append(tail[:idx] + 'camera_info')
 
-            bridges.append(GazeboBridge(gz_head + [cam[0]], ros_head + [cam[1]], 'sensor_msgs/CameraInfo', GazeboBridge.gz2ros))
+            bridges.append(GazeboBridge(gz_head + [cam[0]], ros_head + [cam[1]], 'sensor_msgs/CameraInfo', GazeboBridge.gz2ros, frame_id=bridge.frame_id))
 
         std_config = sum([bridge.yaml() for bridge in bridges if not bridge.is_image], [])
 
@@ -586,15 +586,31 @@ class SimpleLauncher:
                         parameters = {'config_file': dst})
 
         if len(im_bridges):
-            # use remapping to ROS topics
-            remappings = []
-            for bridge in im_bridges:
-                for ext in ('', '/compressed', '/compressedDepth', '/theora', '/zstd'):
-                    remappings.append((SimpleSubstitution(bridge.gz_topic,ext), SimpleSubstitution(bridge.ros_topic,ext)))
+            from tempfile import NamedTemporaryFile
 
-            self.node(f'{ros_gz}_image', 'image_bridge', name=SimpleSubstitution(name, '_image'),
-                      arguments = [bridge.gz_topic for bridge in im_bridges],
-                      remappings = remappings)
+            # ensure override_frame_id is used with a single bridge, or group the other ones
+            im_overrides = [[bridge] for bridge in im_bridges if bridge.frame_id is not None]
+            im_no_overrides = [bridge for bridge in im_bridges if bridge.frame_id is None]
+
+            for group in im_overrides + [im_no_overrides]:
+
+                if not group:
+                    continue
+
+                # use remapping to ROS topics
+                remappings = []
+                parameters = {}
+
+                for bridge in im_bridges:
+                    for ext in ('', '/compressed', '/compressedDepth', '/theora', '/zstd'):
+                        remappings.append((SimpleSubstitution(bridge.gz_topic,ext), SimpleSubstitution(bridge.ros_topic,ext)))
+                    if bridge.frame_id is not None:
+                        parameters = {'override_frame_id': bridge.frame_id}
+
+                self.node(f'{ros_gz}_image', 'image_bridge', name=SimpleSubstitution(name, '_image_', basename(NamedTemporaryFile().name)),
+                        arguments = [bridge.gz_topic for bridge in group],
+                        remappings = remappings,
+                        parameters = parameters)
 
     def gz_world_tf(self, world_frame = None):
         '''
